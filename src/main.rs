@@ -5,11 +5,9 @@ use std::env;
 
 use serenity::async_trait;
 use serenity::client::{Client, EventHandler};
-use serenity::framework::standard::{
-    StandardFramework,
-};
+use serenity::framework::standard::StandardFramework;
 
-use commands::{general::*, spam::*};
+use commands::{attack::ATTACK_GROUP, general::GENERAL_GROUP, spam::SPAM_GROUP};
 use endpoints::filters;
 
 struct Handler;
@@ -21,16 +19,16 @@ impl EventHandler for Handler {}
 async fn main() {
     // setup the discord bot
     let framework = StandardFramework::new()
-        .configure(|c| c
-            .prefix("?")
-            .delimiters(vec![", ", ",", " "])
-            .with_whitespace(true)
-        ) // set the bot's prefix to "?"
-        .bucket("spam", |b| {
-            b.limit(1).time_span(2)
-        }).await
+        .configure(|c| {
+            c.prefix("?")
+                .delimiters(vec![", ", ",", " "])
+                .with_whitespace(true)
+        }) // set the bot's prefix to "?"
+        .bucket("spam", |b| b.limit(1).time_span(2))
+        .await
         .group(&GENERAL_GROUP)
-        .group(&SPAM_GROUP);
+        .group(&SPAM_GROUP)
+        .group(&ATTACK_GROUP);
 
     // Login with a bot token from the environment
     let token = env::var("DISCORD_TOKEN").expect("token");

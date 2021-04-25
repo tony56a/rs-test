@@ -1,9 +1,9 @@
-use serenity::prelude::*;
-use serenity::model::prelude::*;
 use serenity::framework::standard::{
-    CommandResult,
     macros::{command, group},
+    CommandResult,
 };
+use serenity::model::prelude::*;
+use serenity::prelude::*;
 
 #[command]
 pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
@@ -12,5 +12,6 @@ pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[group]
+#[description = "General group of commands"]
 #[commands(ping)]
 struct General;
