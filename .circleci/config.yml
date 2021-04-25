@@ -18,3 +18,9 @@ jobs:
             HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:login
             HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:push -a ${HEROKU_APP} web
             HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:release -a ${HEROKU_APP} web
+
+workflows:
+  version: 2.1
+  build_image:
+    jobs:
+      - build_and_deploy
