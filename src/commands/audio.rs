@@ -24,7 +24,7 @@ pub async fn join(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         return Ok(());
     }
 
-    let voice_channel = args.single_quoted::<String>()?;
+    let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
 
     let voice_channels: HashMap<String, ChannelId> = guild
         .channels
@@ -36,7 +36,7 @@ pub async fn join(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         })
         .collect();
 
-    if !voice_channels.contains_key(&voice_channel.to_lowercase()) {
+    if !voice_channels.contains_key(&voice_channel) {
         msg.channel_id
             .say(
                 &ctx.http,
@@ -85,9 +85,6 @@ pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).await.unwrap();
-    let guild_id = guild.id;
-
     let mapping: HashMap<&str, &str> = [
         (
             "that was easy",
@@ -207,7 +204,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             return Ok(());
         }
     };
-    let voice_channel = args.single_quoted::<String>()?;
+    let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
 
     if !mapping.contains_key(&*clip_name) {
         msg.channel_id
@@ -226,7 +223,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         })
         .collect();
 
-    if !voice_channels.contains_key(&voice_channel.to_lowercase()) {
+    if !voice_channels.contains_key(&voice_channel) {
         msg.channel_id
             .say(
                 &ctx.http,
@@ -243,7 +240,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let _ = manager
         .join(
             guild_id,
-            u64::from(voice_channels[&voice_channel.to_lowercase()]),
+            u64::from(voice_channels[&voice_channel]),
         )
         .await;
 
