@@ -93,6 +93,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         ("yeet", "https://www.youtube.com/watch?v=EwlM3kpqEo0"),
         ("bruh", "https://www.youtube.com/watch?v=2ZIpFytCSVc"),
         ("fart", "https://www.youtube.com/watch?v=dEOjOkHSShM"),
+        ("doot", "https://www.youtube.com/watch?v=WTWyosdkx44"),
     ]
     .iter()
     .cloned()
@@ -175,6 +176,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         ("yeet", "https://www.youtube.com/watch?v=EwlM3kpqEo0"),
         ("bruh", "https://www.youtube.com/watch?v=2ZIpFytCSVc"),
         ("fart", "https://www.youtube.com/watch?v=dEOjOkHSShM"),
+        ("doot", "https://www.youtube.com/watch?v=WTWyosdkx44")
     ]
     .iter()
     .cloned()
