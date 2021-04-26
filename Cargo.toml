@@ -20,6 +20,7 @@ features = [
     "utils",
     "rustls_backend",
     "voice",
+    "cache",
 ]
 
 [dependencies]

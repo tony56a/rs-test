@@ -7,8 +7,11 @@ use serenity::async_trait;
 use serenity::client::{Client, EventHandler};
 use serenity::framework::standard::StandardFramework;
 
-use commands::{attack::ATTACK_GROUP, general::GENERAL_GROUP, spam::SPAM_GROUP};
+use commands::{
+    attack::ATTACK_GROUP, audio::AUDIO_GROUP, general::GENERAL_GROUP, spam::SPAM_GROUP,
+};
 use endpoints::filters;
+use songbird::SerenityInit;
 
 struct Handler;
 
@@ -20,7 +23,7 @@ async fn main() {
     // setup the discord bot
     let framework = StandardFramework::new()
         .configure(|c| {
-            c.prefix("?")
+            c.prefix("~")
                 .delimiters(vec![", ", ",", " "])
                 .with_whitespace(true)
         }) // set the bot's prefix to "?"
@@ -28,13 +31,15 @@ async fn main() {
         .await
         .group(&GENERAL_GROUP)
         .group(&SPAM_GROUP)
-        .group(&ATTACK_GROUP);
+        .group(&ATTACK_GROUP)
+        .group(&AUDIO_GROUP);
 
     // Login with a bot token from the environment
     let token = env::var("DISCORD_TOKEN").expect("token");
     let mut client = Client::builder(token)
         .event_handler(Handler)
         .framework(framework)
+        .register_songbird()
         .await
         .expect("Error creating client");
 
