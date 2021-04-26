@@ -3,16 +3,6 @@ FROM rust:1.51-buster as build-image
 
 WORKDIR /usr/src/app
 
-COPY Cargo.toml Cargo.toml
-
-RUN mkdir src/
-
-RUN echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs
-
-RUN cargo build --release
-
-RUN rm -f target/release/deps/myapp*
-
 COPY . .
 
 RUN apt-get update && apt-get install --no-install-recommends \
