@@ -31,7 +31,7 @@ async fn main() {
     // setup the discord bot
     let framework = StandardFramework::new()
         .configure(|c| {
-            c.prefix("~")
+            c.prefix("?")
                 .delimiters(vec![", ", ",", " "])
                 .with_whitespace(true)
         }) // set the bot's prefix to "?"
