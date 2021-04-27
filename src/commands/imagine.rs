@@ -67,7 +67,7 @@ pub async fn weird_shit(ctx: &Context, msg: &Message) -> CommandResult {
         let bot_config = bot_config_lock.read().await;
         let client = reqwest::Client::new();
 
-        let params = [("image", "https://loremflickr.com/640/480/animal")];
+        let params = [("image", "https://loremflickr.com/640/480/deepdream")];
 
         client
             .post("https://api.deepai.org/api/deepdream")
