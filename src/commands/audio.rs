@@ -176,7 +176,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         ("yeet", "https://www.youtube.com/watch?v=EwlM3kpqEo0"),
         ("bruh", "https://www.youtube.com/watch?v=2ZIpFytCSVc"),
         ("fart", "https://www.youtube.com/watch?v=dEOjOkHSShM"),
-        ("doot", "https://www.youtube.com/watch?v=WTWyosdkx44")
+        ("doot", "https://www.youtube.com/watch?v=WTWyosdkx44"),
     ]
     .iter()
     .cloned()
@@ -240,10 +240,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         .clone();
 
     let _ = manager
-        .join(
-            guild_id,
-            u64::from(voice_channels[&voice_channel]),
-        )
+        .join(guild_id, u64::from(voice_channels[&voice_channel]))
         .await;
 
     if let Some(handler_lock) = manager.get(guild_id) {
