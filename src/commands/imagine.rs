@@ -27,7 +27,8 @@ pub async fn picture(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         return Ok(());
     }
 
-    let sentence = args.single_quoted::<String>()?;
+    let sentence = String::from(args.single_quoted::<String>()?.trim());
+    let params = [("text", sentence)];
 
     let res = {
         let data_read = ctx.data.read().await;
@@ -43,7 +44,7 @@ pub async fn picture(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
                 "api-key",
                 bot_config.get::<str>(&constants::DEEPAI_TOKEN_KEY).unwrap(),
             )
-            .body(sentence)
+            .form(&params)
             .send()
             .await?
             .json::<ApiResponse>()
