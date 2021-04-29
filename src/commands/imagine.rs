@@ -58,7 +58,6 @@ pub async fn picture(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
 
 #[command]
 pub async fn weird_shit(ctx: &Context, msg: &Message) -> CommandResult {
-
     let res = {
         let data_read = ctx.data.read().await;
         let bot_config_lock = data_read

@@ -1,3 +1,4 @@
+use crate::models::soundboard_map::SoundboardMap;
 use serenity::framework::standard::{
     macros::{command, group},
     Args, CommandResult,
@@ -7,6 +8,7 @@ use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
 use songbird::tracks::PlayMode;
 use std::collections::HashMap;
+use std::{thread, time};
 
 #[command]
 #[only_in(guilds)]
@@ -85,20 +87,15 @@ pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let mapping: HashMap<&str, &str> = [
-        (
-            "that was easy",
-            "https://www.youtube.com/watch?v=OE_d8UCiXcI",
-        ),
-        ("yeet", "https://www.youtube.com/watch?v=EwlM3kpqEo0"),
-        ("bruh", "https://www.youtube.com/watch?v=2ZIpFytCSVc"),
-        ("fart", "https://www.youtube.com/watch?v=dEOjOkHSShM"),
-        ("doot", "https://www.youtube.com/watch?v=WTWyosdkx44"),
-    ]
-    .iter()
-    .cloned()
-    .collect();
-
+    let mapping = {
+        let data_read = ctx.data.read().await;
+        let mapping_lock = data_read
+            .get::<SoundboardMap>()
+            .expect("Expected Soundboard mapping in TypeMap.")
+            .clone();
+        let mapping = mapping_lock.read().await;
+        mapping.clone()
+    };
     if args.is_empty() {
         let response = mapping
             .keys()
@@ -141,7 +138,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     if let Some(handler_lock) = manager.get(guild_id) {
         let mut handler = handler_lock.lock().await;
-        let source = match songbird::ytdl(mapping[&*clip_name]).await {
+        let source = match songbird::ffmpeg(mapping[&*clip_name].to_str().unwrap()).await {
             Ok(source) => source,
             Err(why) => {
                 println!("Err starting source: {:?}", why);
@@ -168,19 +165,15 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let guild = msg.guild(&ctx.cache).await.unwrap();
     let guild_id = guild.id;
 
-    let mapping: HashMap<&str, &str> = [
-        (
-            "that was easy",
-            "https://www.youtube.com/watch?v=OE_d8UCiXcI",
-        ),
-        ("yeet", "https://www.youtube.com/watch?v=EwlM3kpqEo0"),
-        ("bruh", "https://www.youtube.com/watch?v=2ZIpFytCSVc"),
-        ("fart", "https://www.youtube.com/watch?v=dEOjOkHSShM"),
-        ("doot", "https://www.youtube.com/watch?v=WTWyosdkx44"),
-    ]
-    .iter()
-    .cloned()
-    .collect();
+    let mapping = {
+        let data_read = ctx.data.read().await;
+        let mapping_lock = data_read
+            .get::<SoundboardMap>()
+            .expect("Expected Soundboard mapping in TypeMap.")
+            .clone();
+        let mapping = mapping_lock.read().await;
+        mapping.clone()
+    };
 
     if args.is_empty() {
         let response = mapping
@@ -245,11 +238,10 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     if let Some(handler_lock) = manager.get(guild_id) {
         let mut handler = handler_lock.lock().await;
-        let source = match songbird::ytdl(mapping[&*clip_name]).await {
+        let source = match songbird::ffmpeg(mapping[&*clip_name].to_str().unwrap()).await {
             Ok(source) => source,
             Err(why) => {
                 println!("Err starting source: {:?}", why);
-
                 msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await;
 
                 return Ok(());
@@ -257,7 +249,10 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         };
 
         let handle = handler.play_only_source(source);
-        while handle.get_info().await?.playing == PlayMode::Play {}
+
+        // Delay until end of the clip + 500ms (for remaining audio packets or something)
+        while handle.get_info().await?.playing != PlayMode::End {}
+        thread::sleep(time::Duration::from_millis(500));
     } else {
         msg.channel_id
             .say(&ctx.http, "Not in a voice channel to play in")

@@ -2,6 +2,7 @@ mod commands;
 mod constants;
 mod endpoints;
 mod models;
+mod utils;
 
 use std::env;
 
@@ -19,6 +20,7 @@ use songbird::SerenityInit;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::models::soundboard_map::SoundboardMap;
 use tokio::sync::RwLock;
 
 struct Handler;
@@ -62,10 +64,13 @@ async fn main() {
             deepai_token.to_string(),
         );
 
+        let mapping = utils::audio::load_files();
+
         // Open the data lock in write mode, so keys can be inserted to it.
         let mut data = client.data.write().await;
 
         data.insert::<BotConfig>(Arc::new(RwLock::new(bot_config)));
+        data.insert::<SoundboardMap>(Arc::new(RwLock::new(mapping)));
     }
 
     // define Server endpoints
