@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install --no-install-recommends \
 
 RUN pip3 install youtube-dl
 
+COPY resources resources
 COPY --from=build-image /usr/src/app/target/release/rs-test /usr/local/bin/rs-test
 
 EXPOSE 3030

@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  web:
+    build: .
+    ports:
+      - "3030:3030"
+    depends_on:
+      - redis
+    env_file:
+      - .env
+  redis:
+    image: "redis:alpine"
