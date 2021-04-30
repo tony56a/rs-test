@@ -1,3 +1,4 @@
+use crate::utils::chat::log_msg_err;
 use serenity::framework::standard::{
     macros::{command, group},
     CommandResult,
@@ -7,7 +8,7 @@ use serenity::prelude::*;
 
 #[command]
 pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.channel_id.say(&ctx.http, "Pong!").await?;
+    log_msg_err(msg.channel_id.say(&ctx.http, "Pong!").await);
     Ok(())
 }
 

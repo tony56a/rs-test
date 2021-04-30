@@ -1,3 +1,4 @@
+use crate::utils::chat::log_msg_err;
 use serenity::framework::standard::{
     macros::{command, group},
     Args, CommandResult,
@@ -11,12 +12,14 @@ use tokio_stream::StreamExt;
 #[bucket = "spam"]
 pub async fn respect(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                String::from("Use me with @user (number of times to spam)"),
-            )
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    String::from("Use me with @user (number of times to spam)"),
+                )
+                .await,
+        );
         return Ok(());
     }
     let provided_user = args.single::<String>()?;
@@ -29,21 +32,25 @@ pub async fn respect(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         return Ok(());
     }
     if msg.mentions.is_empty() {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                format!("{user} doesn't exist!", user = provided_user),
-            )
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("{user} doesn't exist!", user = provided_user),
+                )
+                .await,
+        );
         return Ok(());
     }
     if msg.mentions[0].bot {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                format!("Disrespect bots {times} times", times = times.to_string()),
-            )
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("Disrespect bots {times} times", times = times.to_string()),
+                )
+                .await,
+        );
         return Ok(());
     }
 
@@ -58,10 +65,7 @@ pub async fn respect(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     let iterator_vec: Vec<u32> = (0..times).collect();
     let mut message_stream = tokio_stream::iter(iterator_vec);
     while let Some(_) = message_stream.next().await {
-        match msg.channel_id.say(&ctx.http, &response).await {
-            Err(e) => println!("Some error during message sending: {:?}", e),
-            Ok(_) => {} //Don't care, just do whatever
-        }
+        log_msg_err(msg.channel_id.say(&ctx.http, &response).await)
     }
 
     Ok(())

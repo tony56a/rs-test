@@ -1,4 +1,5 @@
 use crate::models::soundboard_map::SoundboardMap;
+use crate::utils::chat::log_msg_err;
 use serenity::framework::standard::{
     macros::{command, group},
     Args, CommandResult,
@@ -17,12 +18,14 @@ pub async fn join(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
     let guild_id = guild.id;
 
     if args.is_empty() {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                String::from("Use me with \"The channel you want me to join\""),
-            )
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    String::from("Use me with \"The channel you want me to join\""),
+                )
+                .await,
+        );
         return Ok(());
     }
 
@@ -39,12 +42,14 @@ pub async fn join(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         .collect();
 
     if !voice_channels.contains_key(&voice_channel) {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                format!("{channel} doesn't exist!", channel = voice_channel),
-            )
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("{channel} doesn't exist!", channel = voice_channel),
+                )
+                .await,
+        );
         return Ok(());
     }
     let manager = songbird::get(ctx).await.expect("Songbird client").clone();
@@ -73,12 +78,14 @@ pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 
     if has_handler {
         if let Err(e) = manager.remove(guild_id).await {
-            msg.channel_id
-                .say(&ctx.http, format!("Failed: {:?}", e))
-                .await;
+            log_msg_err(
+                msg.channel_id
+                    .say(&ctx.http, format!("Failed: {:?}", e))
+                    .await,
+            );
         }
     } else {
-        msg.reply(ctx, "Not in a voice channel").await;
+        log_msg_err(msg.reply(ctx, "Not in a voice channel").await);
     }
 
     Ok(())
@@ -107,24 +114,28 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                 |cb, clip_name| cb.push(format!("\t* {}\n", clip_name)),
             )
             .build();
-        msg.channel_id.say(&ctx.http, response).await?;
+        log_msg_err(msg.channel_id.say(&ctx.http, response).await);
         return Ok(());
     }
 
     let clip_name = match args.single_quoted::<String>() {
         Ok(name) => name.to_lowercase(),
         Err(_) => {
-            msg.channel_id
-                .say(&ctx.http, "Clip name is not valid!")
-                .await;
+            log_msg_err(
+                msg.channel_id
+                    .say(&ctx.http, "Clip name is not valid!")
+                    .await,
+            );
             return Ok(());
         }
     };
 
     if !mapping.contains_key(&*clip_name) {
-        msg.channel_id
-            .say(&ctx.http, String::from("Effects are not available"))
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, String::from("Effects are not available"))
+                .await,
+        );
         return Ok(());
     }
 
@@ -143,7 +154,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             Err(why) => {
                 println!("Err starting source: {:?}", why);
 
-                msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await;
+                log_msg_err(msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await);
 
                 return Ok(());
             }
@@ -151,9 +162,11 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
         handler.play_only_source(source);
     } else {
-        msg.channel_id
-            .say(&ctx.http, "Not in a voice channel to play in")
-            .await;
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, "Not in a voice channel to play in")
+                .await,
+        );
     }
 
     Ok(())
@@ -186,25 +199,29 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                 |cb, clip_name| cb.push(format!("\t* {}\n", clip_name)),
             )
             .build();
-        msg.channel_id.say(&ctx.http, response).await?;
+        log_msg_err(msg.channel_id.say(&ctx.http, response).await);
         return Ok(());
     }
 
     let clip_name = match args.single_quoted::<String>() {
         Ok(name) => name.to_lowercase(),
         Err(_) => {
-            msg.channel_id
-                .say(&ctx.http, "Clip name is not valid!")
-                .await;
+            log_msg_err(
+                msg.channel_id
+                    .say(&ctx.http, "Clip name is not valid!")
+                    .await,
+            );
             return Ok(());
         }
     };
     let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
 
     if !mapping.contains_key(&*clip_name) {
-        msg.channel_id
-            .say(&ctx.http, String::from("Effects are not available"))
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, String::from("Effects are not available"))
+                .await,
+        );
         return Ok(());
     }
 
@@ -219,12 +236,14 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         .collect();
 
     if !voice_channels.contains_key(&voice_channel) {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                format!("{channel} doesn't exist!", channel = voice_channel),
-            )
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("{channel} doesn't exist!", channel = voice_channel),
+                )
+                .await,
+        );
         return Ok(());
     }
     let manager = songbird::get(ctx)
@@ -242,7 +261,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             Ok(source) => source,
             Err(why) => {
                 println!("Err starting source: {:?}", why);
-                msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await;
+                log_msg_err(msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await);
 
                 return Ok(());
             }
@@ -254,20 +273,24 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         while handle.get_info().await?.playing != PlayMode::End {}
         thread::sleep(time::Duration::from_millis(500));
     } else {
-        msg.channel_id
-            .say(&ctx.http, "Not in a voice channel to play in")
-            .await;
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, "Not in a voice channel to play in")
+                .await,
+        );
     }
 
     let has_handler = manager.get(guild_id).is_some();
     if has_handler {
         if let Err(e) = manager.remove(guild_id).await {
-            msg.channel_id
-                .say(&ctx.http, format!("Failed: {:?}", e))
-                .await;
+            log_msg_err(
+                msg.channel_id
+                    .say(&ctx.http, format!("Failed: {:?}", e))
+                    .await,
+            );
         }
     } else {
-        msg.reply(ctx, "Not in a voice channel").await;
+        log_msg_err(msg.reply(ctx, "Not in a voice channel").await);
     }
 
     Ok(())

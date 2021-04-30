@@ -1,3 +1,4 @@
+use crate::utils::chat::log_msg_err;
 use rand::seq::SliceRandom;
 use serenity::framework::standard::{
     macros::{command, group},
@@ -10,9 +11,11 @@ use serenity::utils::MessageBuilder;
 #[command]
 pub async fn punch(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        msg.channel_id
-            .say(&ctx.http, String::from("Use me with @user"))
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, String::from("Use me with @user"))
+                .await,
+        );
         return Ok(());
     }
 
@@ -34,10 +37,7 @@ pub async fn punch(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         .push(format!("! It's {}", msg_effectiveness))
         .build();
 
-    match msg.channel_id.say(&ctx.http, &response).await {
-        Err(e) => println!("Some error during message sending: {:?}", e),
-        Ok(_) => {} //Don't care, just do whatever
-    }
+    log_msg_err(msg.channel_id.say(&ctx.http, &response).await);
     Ok(())
 }
 

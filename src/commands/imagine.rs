@@ -1,5 +1,6 @@
 use crate::constants;
 use crate::models::bot_config::BotConfig;
+use crate::utils::chat::log_msg_err;
 use reqwest;
 use serde::Deserialize;
 use serenity::framework::standard::{
@@ -11,19 +12,20 @@ use serenity::prelude::*;
 
 #[derive(Deserialize)]
 struct ApiResponse {
-    id: String,
     output_url: String,
 }
 
 #[command]
 pub async fn picture(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                String::from("Use me with \"a sentence, any sentence\""),
-            )
-            .await?;
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    String::from("Use me with \"a sentence, any sentence\""),
+                )
+                .await,
+        );
         return Ok(());
     }
 
@@ -51,8 +53,7 @@ pub async fn picture(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
             .await?
     };
 
-    msg.channel_id.say(&ctx.http, res.output_url).await?;
-
+    log_msg_err(msg.channel_id.say(&ctx.http, res.output_url).await);
     Ok(())
 }
 
@@ -82,8 +83,7 @@ pub async fn weird_shit(ctx: &Context, msg: &Message) -> CommandResult {
             .await?
     };
 
-    msg.channel_id.say(&ctx.http, res.output_url).await?;
-
+    log_msg_err(msg.channel_id.say(&ctx.http, res.output_url).await);
     Ok(())
 }
 
