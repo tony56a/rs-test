@@ -62,12 +62,12 @@ pub async fn spawn(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
             .get_fight_user(&user_to_create_id, &server_name)
             .await;
         if existing_user.is_some() {
-            log_msg_err(msg.reply(&ctx.http, "User already exists!").await);
+            log_msg_err(msg.channel_id.say(&ctx.http, "User already exists!").await);
             return Ok(());
         }
 
         repository.create_fight_user(&fight_user).await;
-        log_msg_err(msg.reply(&ctx.http, "User created!").await);
+        log_msg_err(msg.channel_id.say(&ctx.http, "User created!").await);
     }
 
     Ok(())
@@ -99,7 +99,7 @@ pub async fn status(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
                 .mention(user_to_query)
                 .push(" isn't in the game!")
                 .build();
-            log_msg_err(msg.reply(&ctx.http, response).await);
+            log_msg_err(msg.channel_id.say(&ctx.http, response).await);
             return Ok(());
         }
         existing_user.unwrap()
@@ -143,7 +143,7 @@ pub async fn status(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
             });
     }
 
-    log_msg_err(msg.reply(&ctx.http, &mb.build()).await);
+    log_msg_err(msg.channel_id.say(&ctx.http, &mb.build()).await);
 
     Ok(())
 }
@@ -151,7 +151,7 @@ pub async fn status(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 #[command]
 pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        log_msg_err(msg.reply(&ctx.http, "Use me with @user".to_string()).await);
+        log_msg_err(msg.channel_id.say(&ctx.http, "Use me with @user".to_string()).await);
         return Ok(());
     }
 
@@ -166,7 +166,7 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     let attacked_user_id = &user_to_query.id;
 
     if attacking_user_id == attacked_user_id {
-        log_msg_err(msg.reply(&ctx.http, "Stop hitting yourself!").await);
+        log_msg_err(msg.channel_id.say(&ctx.http, "Stop hitting yourself!").await);
         return Ok(());
     }
 
@@ -185,7 +185,7 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
                 .mention(user_to_query)
                 .push(" isn't in the game!")
                 .build();
-            log_msg_err(msg.reply(&ctx.http, response).await);
+            log_msg_err(msg.channel_id.say(&ctx.http, response).await);
             return Ok(());
         }
 
@@ -197,7 +197,7 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
                 .mention(user_to_query)
                 .push(" isn't in the game!")
                 .build();
-            log_msg_err(msg.reply(&ctx.http, response).await);
+            log_msg_err(msg.channel_id.say(&ctx.http, response).await);
             return Ok(());
         }
         (attacking_user.unwrap(), attacked_user.unwrap())
@@ -328,7 +328,7 @@ pub async fn revive(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
                 .mention(user_to_query)
                 .push(" isn't in the game!")
                 .build();
-            log_msg_err(msg.reply(&ctx.http, response).await);
+            log_msg_err(msg.channel_id.say(&ctx.http, response).await);
             return Ok(());
         }
         user
@@ -340,7 +340,7 @@ pub async fn revive(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
             .push(" hasn't been knocked out yet!")
             .build();
 
-        log_msg_err(msg.reply(&ctx.http, response).await);
+        log_msg_err(msg.channel_id.say(&ctx.http, response).await);
         return Ok(())
     }
 

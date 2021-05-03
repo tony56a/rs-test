@@ -19,7 +19,7 @@ pub async fn join(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 
     if args.is_empty() {
         log_msg_err(
-            msg.reply(
+            msg.channel_id.say(
                 &ctx.http,
                 String::from("Use me with \"The channel you want me to join\""),
             )
@@ -77,10 +77,10 @@ pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 
     if has_handler {
         if let Err(e) = manager.remove(guild_id).await {
-            log_msg_err(msg.reply(&ctx.http, format!("Failed: {:?}", e)).await);
+            log_msg_err(msg.channel_id.say(&ctx.http, format!("Failed: {:?}", e)).await);
         }
     } else {
-        log_msg_err(msg.reply(ctx, "Not in a voice channel").await);
+        log_msg_err(msg.channel_id.say(ctx, "Not in a voice channel").await);
     }
 
     Ok(())
@@ -127,7 +127,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     if !mapping.contains_key(&*clip_name) {
         log_msg_err(
-            msg.reply(&ctx.http, String::from("Effects are not available"))
+            msg.channel_id.say(&ctx.http, String::from("Effects are not available"))
                 .await,
         );
         return Ok(());
@@ -200,7 +200,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let clip_name = match args.single_quoted::<String>() {
         Ok(name) => name.to_lowercase(),
         Err(_) => {
-            log_msg_err(msg.reply(&ctx.http, "Clip name is not valid!").await);
+            log_msg_err(msg.channel_id.say(&ctx.http, "Clip name is not valid!").await);
             return Ok(());
         }
     };
@@ -208,7 +208,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     if !mapping.contains_key(&*clip_name) {
         log_msg_err(
-            msg.reply(&ctx.http, String::from("Clip name is not available"))
+            msg.channel_id.say(&ctx.http, String::from("Clip name is not available"))
                 .await,
         );
         return Ok(());
@@ -226,7 +226,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     if !voice_channels.contains_key(&voice_channel) {
         log_msg_err(
-            msg.reply(
+            msg.channel_id.say(
                 &ctx.http,
                 format!("{channel} doesn't exist!", channel = voice_channel),
             )
@@ -262,7 +262,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         thread::sleep(time::Duration::from_millis(500));
     } else {
         log_msg_err(
-            msg.reply(&ctx.http, "Not in a voice channel to play in")
+            msg.channel_id.say(&ctx.http, "Not in a voice channel to play in")
                 .await,
         );
     }
@@ -270,10 +270,10 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let has_handler = manager.get(guild_id).is_some();
     if has_handler {
         if let Err(e) = manager.remove(guild_id).await {
-            log_msg_err(msg.reply(&ctx.http, format!("Failed: {:?}", e)).await);
+            log_msg_err(msg.channel_id.say(&ctx.http, format!("Failed: {:?}", e)).await);
         }
     } else {
-        log_msg_err(msg.reply(ctx, "Not in a voice channel").await);
+        log_msg_err(msg.channel_id.say(ctx, "Not in a voice channel").await);
     }
 
     Ok(())
