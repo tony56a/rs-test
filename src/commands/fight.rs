@@ -225,13 +225,13 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         if attacked_new_hitpoints <= 0.0 {
             let mut attacked_knocked_out_by_vec = attacked_user.knocked_out_by.clone();
             attacked_knocked_out_by_vec.push(attacking_user_id.to_string());
-            if attacked_knocked_out_by_vec.len() > 1 {
+            if attacked_knocked_out_by_vec.len() > 10 {
                 attacked_knocked_out_by_vec = attacked_knocked_out_by_vec[1..].to_owned();
             }
 
             let mut attacking_knocked_out_vec = attacking_user.knocked_out.clone();
             attacking_knocked_out_vec.push(attacked_user_id.to_string());
-            if attacking_knocked_out_vec.len() > 1 {
+            if attacking_knocked_out_vec.len() > 10 {
                 attacking_knocked_out_vec = attacking_knocked_out_vec[1..].to_owned();
             }
 
