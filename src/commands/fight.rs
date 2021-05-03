@@ -182,7 +182,7 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
             .await;
         if attacking_user.is_none() {
             let response = MessageBuilder::new()
-                .mention(user_to_query)
+                .mention(attacking_user_id)
                 .push(" isn't in the game!")
                 .build();
             log_msg_err(msg.channel_id.say(&ctx.http, response).await);
@@ -194,7 +194,7 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
             .await;
         if attacked_user.is_none() {
             let response = MessageBuilder::new()
-                .mention(user_to_query)
+                .mention(attacked_user_id)
                 .push(" isn't in the game!")
                 .build();
             log_msg_err(msg.channel_id.say(&ctx.http, response).await);
