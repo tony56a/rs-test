@@ -107,6 +107,7 @@ impl FightUserRepository for FightUserDDBRepository {
             .get_item(GetItemInput {
                 key: key_mapping,
                 table_name: self.table_name.clone(),
+                consistent_read: Some(true),
                 ..GetItemInput::default()
             })
             .await;
