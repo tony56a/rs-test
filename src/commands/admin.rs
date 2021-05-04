@@ -29,24 +29,23 @@ async fn admin_check(
         owners.clone()
     };
 
-    println!("{:?}", owners);
-    if !owners.contains(&msg.author.id) {
-        return Err(Reason::Log("Lacked owner permission".to_string()));
-    }
-
     if let Some(member) = &msg.member {
         for role in &member.roles {
             if role
                 .to_role_cached(&ctx.cache)
                 .await
-                .map_or(false, |r| !r.has_permission(Permissions::ADMINISTRATOR))
+                .map_or(false, |r| r.has_permission(Permissions::ADMINISTRATOR))
             {
-                return Err(Reason::Log("Lacked owner permission".to_string()));
+                return Ok(())
             }
         }
     }
 
-    Ok(())
+    if owners.contains(&msg.author.id) {
+        return Ok(());
+    }
+
+    Err(Reason::Log("Lacked owner permission".to_string()))
 }
 
 // A command can have sub-commands, just like in command lines tools.

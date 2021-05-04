@@ -59,7 +59,7 @@ async fn main() {
         }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
-    println!("{:?}", owners);
+
     let framework = StandardFramework::new()
         .configure(|c| {
             c.prefix("?")
