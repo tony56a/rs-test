@@ -49,7 +49,11 @@ pub async fn spawn(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
     let user_to_create_id = user_to_create.id.to_string();
 
-    let fight_user = FightUser::new(user_to_create_id.as_str(), server_name.as_str(), DEFAULT_HITPOINTS);
+    let fight_user = FightUser::new(
+        user_to_create_id.as_str(),
+        server_name.as_str(),
+        DEFAULT_HITPOINTS,
+    );
 
     {
         let data_read = ctx.data.read().await;
@@ -121,20 +125,16 @@ pub async fn status(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 
     if user.knocked_out.len() > 0 {
         response = response.push_line("Knocked out: ");
-        response = user
-            .knocked_out
-            .into_iter()
-            .fold(response, |cb, user_id| {
-                cb.push("\t*")
-                    .mention(&user_id.parse::<UserId>().unwrap())
-                    .push_line("")
-            });
+        response = user.knocked_out.into_iter().fold(response, |cb, user_id| {
+            cb.push("\t*")
+                .mention(&user_id.parse::<UserId>().unwrap())
+                .push_line("")
+        });
     }
 
     if user.knocked_out_by.len() > 0 {
         response = response.push_line("Knocked out by: ");
-        response = user
-            .knocked_out_by
+        user.knocked_out_by
             .into_iter()
             .fold(response, |cb, user_id| {
                 cb.push("\t*")
@@ -151,7 +151,11 @@ pub async fn status(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 #[command]
 pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        log_msg_err(msg.channel_id.say(&ctx.http, "Use me with @user".to_string()).await);
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, "Use me with @user".to_string())
+                .await,
+        );
         return Ok(());
     }
 
@@ -166,7 +170,11 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     let attacked_user_id = &user_to_query.id;
 
     if attacking_user_id == attacked_user_id {
-        log_msg_err(msg.channel_id.say(&ctx.http, "Stop hitting yourself!").await);
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, "Stop hitting yourself!")
+                .await,
+        );
         return Ok(());
     }
 
@@ -203,20 +211,31 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         (attacking_user.unwrap(), attacked_user.unwrap())
     };
 
+    if (&attacking_user).hitpoints <= 0.0 {
+        let response = MessageBuilder::new()
+            .mention(attacking_user_id)
+            .push(" is out of the fight!")
+            .build();
+
+        log_msg_err(msg.channel_id.say(&ctx.http, response).await);
+        return Ok(());
+    }
+
     if (&attacked_user).hitpoints <= 0.0 {
         let response = MessageBuilder::new()
-            .mention(user_to_query)
+            .mention(attacked_user_id)
             .push(" has already been knocked out!")
             .build();
 
         log_msg_err(msg.channel_id.say(&ctx.http, response).await);
-        return Ok(())
+        return Ok(());
     }
 
     let attack_effectiveness = rand::random::<AttackEffectiveness>();
     let attacking_weapon = &(attacking_user).weapon.clone().unwrap_or(FightWeapon {
         name: "fists".to_string(),
         attack_val: 5.0,
+        ..FightWeapon::default()
     });
     let attack_value: f64 = attacking_weapon.attack_val * attack_effectiveness.value_multiplier();
 
@@ -306,7 +325,6 @@ pub async fn attack(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 
 #[command]
 pub async fn revive(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-
     let (user_to_query_result, server_name) = get_user_data(msg, &mut args, true);
     let user_to_query = match user_to_query_result {
         None => return Ok(()),
@@ -332,7 +350,8 @@ pub async fn revive(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
             return Ok(());
         }
         user
-    }.unwrap();
+    }
+    .unwrap();
 
     if (&queried_user).hitpoints > 0.0 {
         let response = MessageBuilder::new()
@@ -341,7 +360,7 @@ pub async fn revive(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
             .build();
 
         log_msg_err(msg.channel_id.say(&ctx.http, response).await);
-        return Ok(())
+        return Ok(());
     }
 
     let revived_user = FightUser {
@@ -357,11 +376,7 @@ pub async fn revive(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
             .clone();
 
         repository
-            .update_fight_user(
-                &revived_user.user_id,
-                server_name.as_str(),
-                &revived_user,
-            )
+            .update_fight_user(&revived_user.user_id, server_name.as_str(), &revived_user)
             .await?;
     }
 
