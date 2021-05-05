@@ -2,7 +2,7 @@ use crate::models::bot_config::Owners;
 use crate::models::db::FightWeaponRepoHolder;
 use crate::models::fight_weapon::FightWeapon;
 use crate::repos::fight_weapon::FightWeaponRepository;
-use crate::utils::chat::log_msg_err;
+use crate::utils::chat::{log_msg_err, ADMIN_CHECK};
 use serenity::client::Context;
 use serenity::framework::standard::{
     macros::{check, command, group},
@@ -10,43 +10,6 @@ use serenity::framework::standard::{
 };
 use serenity::model::channel::Message;
 use serenity::model::Permissions;
-
-#[check]
-#[name = "Admin"]
-async fn admin_check(
-    ctx: &Context,
-    msg: &Message,
-    _: &mut Args,
-    _: &CommandOptions,
-) -> Result<(), Reason> {
-    let owners = {
-        let data_read = ctx.data.read().await;
-        let owners_lock = data_read
-            .get::<Owners>()
-            .expect("Expected owners in TypeMap.")
-            .clone();
-        let owners = owners_lock.read().await;
-        owners.clone()
-    };
-
-    if let Some(member) = &msg.member {
-        for role in &member.roles {
-            if role
-                .to_role_cached(&ctx.cache)
-                .await
-                .map_or(false, |r| r.has_permission(Permissions::ADMINISTRATOR))
-            {
-                return Ok(())
-            }
-        }
-    }
-
-    if owners.contains(&msg.author.id) {
-        return Ok(());
-    }
-
-    Err(Reason::Log("Lacked owner permission".to_string()))
-}
 
 // A command can have sub-commands, just like in command lines tools.
 // Imagine `cargo help` and `cargo help run`.
@@ -89,7 +52,7 @@ async fn add_weapon(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         let data_read = ctx.data.read().await;
         let repository = data_read
             .get::<FightWeaponRepoHolder>()
-            .expect("Expected Fight user repository in TypeMap.")
+            .expect("Expected Fight weapon repository in TypeMap.")
             .clone();
 
         let existing_weapon = repository

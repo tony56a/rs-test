@@ -1,8 +1,9 @@
-use crate::models::db::FightUserRepoHolder;
+use crate::models::db::{FightUserRepoHolder, FightWeaponRepoHolder};
 use crate::models::fight_effectiveness::AttackEffectiveness;
 use crate::models::fight_user::FightUser;
 use crate::models::fight_weapon::FightWeapon;
 use crate::repos::fight_user::FightUserRepository;
+use crate::repos::fight_weapon::FightWeaponRepository;
 use crate::utils::chat::log_msg_err;
 use serenity::framework::standard::{
     macros::{command, group},
@@ -365,6 +366,7 @@ pub async fn revive(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 
     let revived_user = FightUser {
         hitpoints: DEFAULT_HITPOINTS,
+        weapon: None,
         ..queried_user.clone()
     };
 
@@ -390,9 +392,123 @@ pub async fn revive(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     Ok(())
 }
 
+#[command]
+pub async fn equip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.is_empty() {
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    String::from("Use me with weapon_name(or \"nothing\")"),
+                )
+                .await,
+        );
+        return Ok(());
+    }
+
+    let weapon_name = args.single_quoted::<String>()?;
+    let server_name = msg
+        .guild_id
+        .expect("Guild ID should be present")
+        .0
+        .to_string();
+
+    let queried_user: FightUser = {
+        let data_read = ctx.data.read().await;
+        let repository = data_read
+            .get::<FightUserRepoHolder>()
+            .expect("Expected Fight user repository in TypeMap.")
+            .clone();
+
+        let user = repository
+            .get_fight_user(&msg.author.id.to_string(), &server_name)
+            .await;
+        if user.is_none() {
+            let response = MessageBuilder::new()
+                .mention(&msg.author)
+                .push(" isn't in the game!")
+                .build();
+            log_msg_err(msg.channel_id.say(&ctx.http, response).await);
+            return Ok(());
+        }
+        user.unwrap()
+    };
+
+    if (&queried_user).hitpoints <= 0.0 {
+        let response = MessageBuilder::new()
+            .mention(&msg.author)
+            .push(" is out of the fight!")
+            .build();
+
+        log_msg_err(msg.channel_id.say(&ctx.http, response).await);
+        return Ok(());
+    }
+
+    let weapon_to_equip = {
+        if weapon_name.to_lowercase() == "nothing" {
+            None
+        } else {
+            let data_read = ctx.data.read().await;
+            let repository = data_read
+                .get::<FightWeaponRepoHolder>()
+                .expect("Expected Fight weapon repository in TypeMap.")
+                .clone();
+
+            let existing_weapon = repository
+                .get_fight_weapon(&weapon_name, &server_name)
+                .await;
+            if existing_weapon.is_none() {
+                log_msg_err(
+                    msg.channel_id
+                        .say(&ctx.http, "weapon doesn't exists!")
+                        .await,
+                );
+                return Ok(());
+            }
+            existing_weapon
+        }
+    };
+
+    let updated_user = FightUser {
+        weapon: weapon_to_equip.clone(),
+        ..queried_user.clone()
+    };
+
+    {
+        let data_read = ctx.data.read().await;
+        let repository = data_read
+            .get::<FightUserRepoHolder>()
+            .expect("Expected Fight user repository in TypeMap.")
+            .clone();
+
+        repository
+            .update_fight_user(&updated_user.user_id, server_name.as_str(), &updated_user)
+            .await?;
+    }
+
+    match weapon_to_equip {
+        None => {
+            log_msg_err(
+                msg.channel_id
+                    .say(&ctx.http, format!("Unequipped weapons!"))
+                    .await,
+            );
+        }
+        Some(weapon) => {
+            log_msg_err(
+                msg.channel_id
+                    .say(&ctx.http, format!("Equipped {}!", &weapon.name))
+                    .await,
+            );
+        }
+    }
+
+    Ok(())
+}
+
 #[group]
 #[prefix = "fight"]
 #[description = "Commands to attack other users/bots"]
-#[commands(spawn, status, attack, revive)]
+#[commands(spawn, status, attack, revive, equip)]
 #[only_in(guilds)]
 struct Fight;
