@@ -14,7 +14,7 @@ use serenity::framework::standard::StandardFramework;
 use crate::models::bot_config::{BotConfig, Owners};
 use commands::{
     admin::ADMIN_GROUP, audio::AUDIO_GROUP, fight::FIGHT_GROUP, general::GENERAL_GROUP,
-    imagine::IMAGINE_GROUP, spam::SPAM_GROUP,
+    imagine::IMAGINE_GROUP, spam::SPAM_GROUP, bot::BOT_GROUP
 };
 use endpoints::filters;
 use songbird::SerenityInit;
@@ -75,7 +75,8 @@ async fn main() {
         .group(&FIGHT_GROUP)
         .group(&AUDIO_GROUP)
         .group(&ADMIN_GROUP)
-        .group(&IMAGINE_GROUP);
+        .group(&IMAGINE_GROUP)
+        .group(&BOT_GROUP);
 
     let mut client = Client::builder(token)
         .event_handler(Handler)

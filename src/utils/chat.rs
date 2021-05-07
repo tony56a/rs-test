@@ -1,7 +1,7 @@
 use crate::models::bot_config::Owners;
 use serenity::client::Context;
 use serenity::framework::standard::{
-    macros::{check, command, group},
+    macros::check,
     Args, CommandOptions, Reason,
 };
 use serenity::model::channel::Message;

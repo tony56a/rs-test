@@ -1,15 +1,13 @@
-use crate::models::bot_config::Owners;
 use crate::models::db::FightWeaponRepoHolder;
 use crate::models::fight_weapon::FightWeapon;
 use crate::repos::fight_weapon::FightWeaponRepository;
 use crate::utils::chat::{log_msg_err, ADMIN_CHECK};
 use serenity::client::Context;
 use serenity::framework::standard::{
-    macros::{check, command, group},
-    Args, CommandOptions, CommandResult, Reason,
+    macros::{command, group},
+    Args, CommandResult,
 };
 use serenity::model::channel::Message;
-use serenity::model::Permissions;
 
 // A command can have sub-commands, just like in command lines tools.
 // Imagine `cargo help` and `cargo help run`.
