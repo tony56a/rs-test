@@ -26,7 +26,7 @@ pub async fn send(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         return Ok(());
     }
     let provided_user = args.single::<String>()?;
-    let message_str = args.single::<String>()?;
+    let message_str = args.single_quoted::<String>()?;
 
     // Validate based on inferred mentions (also cap number of times to spam)
     // (i.e: 1 user mention specfically, and can't be a bot/broadcast)
@@ -50,7 +50,7 @@ pub async fn send(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
             msg.channel_id
                 .say(
                     &ctx.http,
-                    format!("Humans cannot understand the ancient language of the memes"),
+                    format!("Humans cannot understand the ancient language of the memes!"),
                 )
                 .await,
         );
