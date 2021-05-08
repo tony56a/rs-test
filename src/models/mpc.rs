@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct MemeMessage {
     pub command: String,
-    pub arguments: HashMap<String, String>
+    pub arguments: HashMap<String, String>,
 }
 
 #[derive(Deserialize)]

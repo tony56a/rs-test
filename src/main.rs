@@ -13,8 +13,8 @@ use serenity::framework::standard::StandardFramework;
 
 use crate::models::bot_config::{BotConfig, Owners};
 use commands::{
-    admin::ADMIN_GROUP, audio::AUDIO_GROUP, fight::FIGHT_GROUP, general::GENERAL_GROUP,
-    imagine::IMAGINE_GROUP, spam::SPAM_GROUP, bot::BOT_GROUP
+    admin::ADMIN_GROUP, audio::AUDIO_GROUP, bot::BOT_GROUP, fight::FIGHT_GROUP,
+    general::GENERAL_GROUP, imagine::IMAGINE_GROUP, spam::SPAM_GROUP,
 };
 use endpoints::filters;
 use songbird::SerenityInit;
@@ -128,7 +128,6 @@ async fn main() {
     tokio::spawn(async move {
         http_service.await;
     });
-
     if let Err(why) = client.start().await {
         panic!("Client error: {:?}", why);
     }

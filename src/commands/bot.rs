@@ -1,26 +1,24 @@
+use crate::commands::bot_cmds::text::echo_text;
+use crate::models::mpc::{MemeApiResponse, MemeMessage};
 use crate::utils::chat::log_msg_err;
+use crate::utils::image::{decode_message_from_image, embed_message_into_image};
+use image::codecs::png::PngEncoder;
+use image::imageops::FilterType;
+use image::ColorType;
 use serenity::framework::standard::{
     macros::{command, group},
     Args, CommandResult,
 };
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use serenity::utils::MessageBuilder;
-use crate::models::mpc::{MemeMessage, MemeApiResponse};
-use image::ColorType;
-use image::imageops::FilterType;
-use crate::utils::image::embed_message_into_image;
-use image::codecs::png::PngEncoder;
+use std::collections::HashMap;
 
 #[command]
 pub async fn send(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         log_msg_err(
             msg.channel_id
-                .say(
-                    &ctx.http,
-                    String::from("Use me with @user Message"),
-                )
+                .say(&ctx.http, String::from("Use me with @user Message"))
                 .await,
         );
         return Ok(());
@@ -68,7 +66,8 @@ pub async fn send(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
             .await
             .unwrap();
 
-        let image_res = client.get(api_res.url)
+        let image_res = client
+            .get(api_res.url)
             .send()
             .await
             .unwrap()
@@ -84,30 +83,73 @@ pub async fn send(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 
     let message = MemeMessage {
         command: "text".to_string(),
-        arguments: vec![
-            ("payload".to_string(), message_str),
-        ].iter().cloned().collect(),
+        arguments: vec![("payload".to_string(), message_str)]
+            .iter()
+            .cloned()
+            .collect(),
     };
 
     let payload_image = match embed_message_into_image(&input_image, &message) {
-        None => { return Ok(())}
-        Some(image) => { image }
+        None => return Ok(()),
+        Some(image) => image,
     };
     let mut buf = Vec::new();
     let (width, height) = payload_image.dimensions();
     {
         PngEncoder::new(&mut buf)
-            .encode(
-                payload_image.as_raw(),
-                width,
-                height,
-                ColorType::Rgb8
-            ).expect("Image was not encoded correctly")
+            .encode(payload_image.as_raw(), width, height, ColorType::Rgb8)
+            .expect("Image was not encoded correctly")
     }
 
-    log_msg_err(msg.channel_id.send_files(&ctx.http, vec![(buf.as_slice(), "message.png")],  |m| {
-        m.content("!bot receive")
-    }).await);
+    log_msg_err(
+        msg.channel_id
+            .send_files(&ctx.http, vec![(buf.as_slice(), "message.png")], |m| {
+                m.content("!bot receive")
+            })
+            .await,
+    );
+
+    Ok(())
+}
+
+#[command]
+pub async fn receive(ctx: &Context, msg: &Message) -> CommandResult {
+    if msg.attachments.is_empty() {
+        return Ok(());
+    }
+
+    let image_bytes = match msg.attachments[0].download().await {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            println!("Error downloading image");
+            return Ok(());
+        }
+    };
+
+    let image = image::load_from_memory(&image_bytes).expect("image loading failed");
+    let message = match decode_message_from_image(&image) {
+        None => return Ok(()),
+        Some(message) => message,
+    };
+
+    let mut bot_commands = HashMap::new();
+    bot_commands.insert("text", Box::new(echo_text));
+
+    if !bot_commands.contains_key(message.command.to_lowercase().as_str()) {
+        log_msg_err(
+            msg.reply(&ctx.http, "dunno what to do with the message")
+                .await,
+        );
+    }
+    let command_response: Option<String> =
+        bot_commands[message.command.to_lowercase().as_str()](&message, &ctx).await;
+    if !command_response.is_none() {
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, command_response.unwrap())
+                .await,
+        );
+    }
 
     Ok(())
 }
@@ -115,5 +157,5 @@ pub async fn send(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 #[group]
 #[prefix = "bot"]
 #[description = "Commands for bot usage only"]
-#[commands(send)]
+#[commands(send, receive)]
 struct Bot;
