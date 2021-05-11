@@ -1,5 +1,5 @@
 use crate::constants;
-use crate::models::bot_config::BotConfig;
+use crate::models::holders::BotConfig;
 use crate::utils::chat::log_msg_err;
 use reqwest;
 use serde::Deserialize;

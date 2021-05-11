@@ -1,4 +1,4 @@
-use crate::models::db::{FightUserRepoHolder, FightWeaponRepoHolder};
+use crate::models::holders::{FightUserRepoHolder, FightWeaponRepoHolder};
 use crate::models::fight_effectiveness::AttackEffectiveness;
 use crate::models::fight_user::FightUser;
 use crate::models::fight_weapon::FightWeapon;

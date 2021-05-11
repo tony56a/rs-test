@@ -1,4 +1,4 @@
-use crate::models::soundboard_map::SoundboardMap;
+use crate::models::holders::SoundboardMap;
 use crate::utils::chat::log_msg_err;
 use serenity::framework::standard::{
     macros::{command, group},

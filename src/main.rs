@@ -11,7 +11,6 @@ use serenity::async_trait;
 use serenity::client::{Client, EventHandler};
 use serenity::framework::standard::StandardFramework;
 
-use crate::models::bot_config::{BotConfig, Owners};
 use commands::{
     admin::ADMIN_GROUP, audio::AUDIO_GROUP, bot::BOT_GROUP, fight::FIGHT_GROUP,
     general::GENERAL_GROUP, imagine::IMAGINE_GROUP, spam::SPAM_GROUP,
@@ -22,14 +21,14 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::constants::AWS_RESOURCE_REGION;
-use crate::models::db::{FightUserRepoHolder, FightWeaponRepoHolder};
-use crate::models::soundboard_map::SoundboardMap;
+use crate::models::holders::{FightUserRepoHolder, FightWeaponRepoHolder, SoundboardMap, BotConfig, Owners, UserQuoteRepoHolder};
 use crate::repos::fight_user::FightUserDDBRepository;
 use crate::repos::fight_weapon::FightWeaponDDBRepository;
 use dynomite::retry::Policy;
 use dynomite::{dynamodb::DynamoDbClient, Retries};
 use serenity::http::Http;
 use tokio::sync::RwLock;
+use crate::repos::quotes::UserQuoteDDBRepository;
 
 struct Handler;
 
@@ -99,6 +98,7 @@ async fn main() {
     let fight_user_table_name = env::var("FIGHT_USERS_TABLE_NAME").expect("fight user table name");
     let fight_weapons_table_name =
         env::var("FIGHT_WEAPONS_TABLE_NAME").expect("fight weapon table name");
+    let user_quote_table_mame = env::var("USER_QUOTE_TABLE_NAME").expect("user quotetable name");
 
     let ddb_client = DynamoDbClient::new(AWS_RESOURCE_REGION).with_retries(Policy::default());
     let fight_user_repo = Arc::new(FightUserDDBRepository::new_with_client(
@@ -109,6 +109,10 @@ async fn main() {
         &ddb_client,
         fight_weapons_table_name.as_str(),
     ));
+    let user_quote_repo = Arc::new(UserQuoteDDBRepository::new_with_client(
+        &ddb_client,
+        user_quote_table_mame.as_str(),
+    ));
 
     {
         // Open the data lock in write mode, so keys can be inserted to it.
@@ -118,6 +122,7 @@ async fn main() {
         data.insert::<SoundboardMap>(Arc::new(RwLock::new(mapping)));
         data.insert::<FightUserRepoHolder>(fight_user_repo);
         data.insert::<FightWeaponRepoHolder>(fight_weapon_repo);
+        data.insert::<UserQuoteRepoHolder>(user_quote_repo);
         data.insert::<Owners>(Arc::new(RwLock::new(owners)));
     }
 

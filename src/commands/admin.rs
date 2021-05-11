@@ -1,4 +1,4 @@
-use crate::models::db::FightWeaponRepoHolder;
+use crate::models::holders::{FightWeaponRepoHolder, UserQuoteRepoHolder};
 use crate::models::fight_weapon::FightWeapon;
 use crate::repos::fight_weapon::FightWeaponRepository;
 use crate::utils::chat::{log_msg_err, ADMIN_CHECK};
@@ -7,17 +7,16 @@ use serenity::framework::standard::{
     macros::{command, group},
     Args, CommandResult,
 };
-use serenity::model::channel::Message;
+use serenity::model::channel::{Message, MessageReference};
+use crate::models::user_quote::UserQuote;
+use crate::repos::quotes::UserQuoteRepository;
 
-// A command can have sub-commands, just like in command lines tools.
-// Imagine `cargo help` and `cargo help run`.
 #[command]
 #[sub_commands(add_weapon)]
 async fn weapons(_: &Context, _: &Message, _args: Args) -> CommandResult {
     Ok(())
 }
 
-// This will only be called if preceded by the `upper`-command.
 #[command("add")]
 async fn add_weapon(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
@@ -71,8 +70,55 @@ async fn add_weapon(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     Ok(())
 }
 
+#[command]
+#[sub_commands(add_quote)]
+async fn quote(_: &Context, _: &Message, _args: Args) -> CommandResult {
+    Ok(())
+}
+
+#[command("add")]
+async fn add_quote(ctx: &Context, msg: &Message) -> CommandResult {
+
+    let quoted_messaage = match &msg.message_reference {
+        None => {return Ok(())}
+        Some(message_ref) => {
+            ctx.http.get_message(message_ref.channel_id.0, message_ref.message_id.unwrap().0).await?
+        }
+    };
+    let server_name = msg
+        .guild_id
+        .expect("Guild ID should be present")
+        .0
+        .to_string();
+
+    {
+        let data_read = ctx.data.read().await;
+        let repository = data_read
+            .get::<UserQuoteRepoHolder>()
+            .expect("Expected Fight weapon repository in TypeMap.")
+            .clone();
+        let user_quote = UserQuote::new(&quoted_messaage, &server_name);
+
+        let existing_quote = repository
+            .get_quote_by_id(quoted_messaage.id, quoted_messaage.channel_id)
+            .await;
+        if existing_quote.is_some() {
+            log_msg_err(
+                msg.channel_id
+                    .say(&ctx.http, "quote already exists!")
+                    .await,
+            );
+            return Ok(());
+        }
+
+        repository.create_user_quote(&user_quote).await;
+        log_msg_err(msg.reply(&ctx.http, "saved.").await);
+    }
+    Ok(())
+}
+
 #[group]
 #[prefix = "admin"]
 #[checks(Admin)]
-#[commands(weapons)]
+#[commands(weapons, quote)]
 struct Admin;

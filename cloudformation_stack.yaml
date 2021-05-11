@@ -18,8 +18,8 @@ Resources:
           AttributeName: "server_name"
           KeyType: "RANGE"
       ProvisionedThroughput:
-        ReadCapacityUnits: 8
-        WriteCapacityUnits: 8
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
   FightWeaponsTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -38,6 +38,58 @@ Resources:
         -
           AttributeName: "server_name"
           KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+  QuoteTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: rs-test-user-quotes
+      AttributeDefinitions:
+        - AttributeName: "message_id"
+          AttributeType: "S"
+        - AttributeName: "author_id"
+          AttributeType: "S"
+        - AttributeName: "server_name"
+          AttributeType: "S"
+        - AttributeName: "sort_id"
+          AttributeType: "S"
+        - AttributeName: "channel_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "server_name"
+          KeyType: "HASH"
+        - AttributeName: "sort_id"
+          KeyType: "RANGE"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "AuthorGSI"
+          KeySchema:
+            -
+              AttributeName: "author_id"
+              KeyType: "HASH"
+            -
+              AttributeName: "message_id"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+        -
+          IndexName: "ChannelGSI"
+          KeySchema:
+            -
+              AttributeName: "channel_id"
+              KeyType: "HASH"
+            -
+              AttributeName: "message_id"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 2
+            WriteCapacityUnits: 2
       ProvisionedThroughput:
         ReadCapacityUnits: 3
         WriteCapacityUnits: 3

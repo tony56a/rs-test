@@ -37,3 +37,4 @@ rusoto_dynamodb = "0.46.0"
 dynomite = { git = "https://github.com//softprops/dynomite", branch = "master" }
 async-trait = "0.1.50"
 image = { version = "0.23.14", features = ["gif", "jpeg", "png", "webp"]  }
+uuid = "0.8"
