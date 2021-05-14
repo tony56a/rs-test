@@ -1,7 +1,7 @@
-use crate::models::holders::{FightUserRepoHolder, FightWeaponRepoHolder};
 use crate::models::fight_effectiveness::AttackEffectiveness;
 use crate::models::fight_user::FightUser;
 use crate::models::fight_weapon::FightWeapon;
+use crate::models::holders::{FightUserRepoHolder, FightWeaponRepoHolder};
 use crate::repos::fight_user::FightUserRepository;
 use crate::repos::fight_weapon::FightWeaponRepository;
 use crate::utils::chat::log_msg_err;

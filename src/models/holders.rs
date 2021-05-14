@@ -1,12 +1,12 @@
 use crate::repos::fight_user::FightUserDDBRepository;
 use crate::repos::fight_weapon::FightWeaponDDBRepository;
+use crate::repos::quotes::UserQuoteDDBRepository;
+use serenity::model::id::UserId;
 use serenity::prelude::TypeMapKey;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use serenity::model::id::UserId;
-use crate::repos::quotes::UserQuoteDDBRepository;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 // Holds the repositories
 pub struct FightWeaponRepoHolder;

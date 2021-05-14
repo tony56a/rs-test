@@ -1,7 +1,7 @@
 use dynomite::Item;
-use uuid::Uuid;
 use serenity::model::channel::Message;
 use std::cmp::Ordering;
+use uuid::Uuid;
 
 #[derive(Item, Debug, Clone, Default, Eq)]
 pub struct UserQuote {
@@ -18,7 +18,7 @@ pub struct UserQuote {
 
 impl UserQuote {
     pub fn new(msg: &Message, server_name: &str) -> UserQuote {
-        UserQuote{
+        UserQuote {
             server_name: server_name.to_string(),
             sort_id: Uuid::new_v4(),
             author_id: msg.author.id.to_string(),
@@ -34,8 +34,11 @@ impl UserQuote {
         key.push_str(&self.message_id);
         key
     }
-}
 
+    pub fn sort_id_key(&self) -> String {
+        self.sort_id.to_hyphenated().to_string()
+    }
+}
 
 impl Ord for UserQuote {
     fn cmp(&self, other: &Self) -> Ordering {

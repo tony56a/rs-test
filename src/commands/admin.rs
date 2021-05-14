@@ -1,6 +1,8 @@
-use crate::models::holders::{FightWeaponRepoHolder, UserQuoteRepoHolder};
 use crate::models::fight_weapon::FightWeapon;
+use crate::models::holders::{FightWeaponRepoHolder, UserQuoteRepoHolder};
+use crate::models::user_quote::UserQuote;
 use crate::repos::fight_weapon::FightWeaponRepository;
+use crate::repos::quotes::UserQuoteRepository;
 use crate::utils::chat::{log_msg_err, ADMIN_CHECK};
 use serenity::client::Context;
 use serenity::framework::standard::{
@@ -8,8 +10,6 @@ use serenity::framework::standard::{
     Args, CommandResult,
 };
 use serenity::model::channel::{Message, MessageReference};
-use crate::models::user_quote::UserQuote;
-use crate::repos::quotes::UserQuoteRepository;
 
 #[command]
 #[sub_commands(add_weapon)]
@@ -71,18 +71,19 @@ async fn add_weapon(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 }
 
 #[command]
-#[sub_commands(add_quote)]
+#[sub_commands(add_quote, delete_quote)]
 async fn quote(_: &Context, _: &Message, _args: Args) -> CommandResult {
     Ok(())
 }
 
 #[command("add")]
 async fn add_quote(ctx: &Context, msg: &Message) -> CommandResult {
-
     let quoted_messaage = match &msg.message_reference {
-        None => {return Ok(())}
+        None => return Ok(()),
         Some(message_ref) => {
-            ctx.http.get_message(message_ref.channel_id.0, message_ref.message_id.unwrap().0).await?
+            ctx.http
+                .get_message(message_ref.channel_id.0, message_ref.message_id.unwrap().0)
+                .await?
         }
     };
     let server_name = msg
@@ -103,16 +104,43 @@ async fn add_quote(ctx: &Context, msg: &Message) -> CommandResult {
             .get_quote_by_id(quoted_messaage.id, quoted_messaage.channel_id)
             .await;
         if existing_quote.is_some() {
-            log_msg_err(
-                msg.channel_id
-                    .say(&ctx.http, "quote already exists!")
-                    .await,
-            );
+            log_msg_err(msg.channel_id.say(&ctx.http, "quote already exists!").await);
             return Ok(());
         }
 
         repository.create_user_quote(&user_quote).await;
         log_msg_err(msg.reply(&ctx.http, "saved.").await);
+    }
+    Ok(())
+}
+
+#[command("delete")]
+async fn delete_quote(ctx: &Context, msg: &Message) -> CommandResult {
+    let quoted_messaage = match &msg.message_reference {
+        None => return Ok(()),
+        Some(message_ref) => {
+            ctx.http
+                .get_message(message_ref.channel_id.0, message_ref.message_id.unwrap().0)
+                .await?
+        }
+    };
+    let server_name = msg
+        .guild_id
+        .expect("Guild ID should be present")
+        .0
+        .to_string();
+
+    {
+        let data_read = ctx.data.read().await;
+        let repository = data_read
+            .get::<UserQuoteRepoHolder>()
+            .expect("Expected Fight weapon repository in TypeMap.")
+            .clone();
+
+        repository.delete_quote(quoted_messaage.id, quoted_messaage.channel_id, &server_name)
+            .await;
+
+        log_msg_err(msg.reply(&ctx.http, "deleted.").await);
     }
     Ok(())
 }

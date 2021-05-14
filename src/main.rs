@@ -21,14 +21,17 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::constants::AWS_RESOURCE_REGION;
-use crate::models::holders::{FightUserRepoHolder, FightWeaponRepoHolder, SoundboardMap, BotConfig, Owners, UserQuoteRepoHolder};
+use crate::models::holders::{
+    BotConfig, FightUserRepoHolder, FightWeaponRepoHolder, Owners, SoundboardMap,
+    UserQuoteRepoHolder,
+};
 use crate::repos::fight_user::FightUserDDBRepository;
 use crate::repos::fight_weapon::FightWeaponDDBRepository;
+use crate::repos::quotes::UserQuoteDDBRepository;
 use dynomite::retry::Policy;
 use dynomite::{dynamodb::DynamoDbClient, Retries};
 use serenity::http::Http;
 use tokio::sync::RwLock;
-use crate::repos::quotes::UserQuoteDDBRepository;
 
 struct Handler;
 
