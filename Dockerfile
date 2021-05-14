@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install --no-install-recommends \
  ca-certificates \
  python3 \
  python3-pip \
+ espeak \
  -y
 
 RUN pip3 install youtube-dl
