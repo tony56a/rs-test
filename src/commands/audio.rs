@@ -9,7 +9,7 @@ use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
 use songbird::tracks::PlayMode;
 use std::collections::HashMap;
-use std::{thread, time};
+use std::{thread, time, fs};
 use crate::utils::audio::{generate_tts_file, combine_files};
 
 #[command]
@@ -427,6 +427,8 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         log_msg_err(msg.channel_id.say(ctx, "Not in a voice channel").await);
     }
 
+    fs::remove_file(tts_file).ok();
+    fs::remove_file(combined_file).ok();
     Ok(())
 }
 
