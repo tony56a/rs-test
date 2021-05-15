@@ -1,4 +1,5 @@
 use crate::models::holders::SoundboardMap;
+use crate::utils::audio::{combine_files, generate_tts_file};
 use crate::utils::chat::log_msg_err;
 use serenity::framework::standard::{
     macros::{command, group},
@@ -8,9 +9,12 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
 use songbird::tracks::PlayMode;
+use songbird::Songbird;
 use std::collections::HashMap;
-use std::{thread, time, fs};
-use crate::utils::audio::{generate_tts_file, combine_files};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::{fs, thread, time};
+use tokio::time::{timeout, Duration};
 
 #[command]
 #[only_in(guilds)]
@@ -179,15 +183,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let guild = msg.guild(&ctx.cache).await.unwrap();
     let guild_id = guild.id;
 
-    let mapping = {
-        let data_read = ctx.data.read().await;
-        let mapping_lock = data_read
-            .get::<SoundboardMap>()
-            .expect("Expected Soundboard mapping in TypeMap.")
-            .clone();
-        let mapping = mapping_lock.read().await;
-        mapping.clone()
-    };
+    let mapping = get_soundboard_mapping(ctx).await;
 
     if args.is_empty() {
         let response = mapping
@@ -226,27 +222,6 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         return Ok(());
     }
 
-    let voice_channels: HashMap<String, ChannelId> = guild
-        .channels
-        .values()
-        .into_iter()
-        .filter_map(|channel| match channel.kind {
-            ChannelType::Voice => Some(((&channel).name.to_lowercase(), channel.id)),
-            _ => None,
-        })
-        .collect();
-
-    if !voice_channels.contains_key(&voice_channel) {
-        log_msg_err(
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    format!("{channel} doesn't exist!", channel = voice_channel),
-                )
-                .await,
-        );
-        return Ok(());
-    }
     let source = match songbird::ffmpeg(mapping[&*clip_name].to_str().unwrap()).await {
         Ok(source) => source,
         Err(why) => {
@@ -257,18 +232,28 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         }
     };
 
+    let channel_id = check_voice_channels(&guild, &voice_channel).await;
+    if channel_id.is_none() {
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("{channel} doesn't exist!", channel = voice_channel),
+                )
+                .await,
+        );
+        return Ok(());
+    }
+
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();
 
-    let _ = manager
-        .join(guild_id, u64::from(voice_channels[&voice_channel]))
-        .await;
+    let _ = manager.join(guild_id, channel_id.unwrap()).await;
 
     if let Some(handler_lock) = manager.get(guild_id) {
         let mut handler = handler_lock.lock().await;
-
 
         let handle = handler.play_only_source(source);
 
@@ -283,18 +268,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         );
     }
 
-    let has_handler = manager.get(guild_id).is_some();
-    if has_handler {
-        if let Err(e) = manager.remove(guild_id).await {
-            log_msg_err(
-                msg.channel_id
-                    .say(&ctx.http, format!("Failed: {:?}", e))
-                    .await,
-            );
-        }
-    } else {
-        log_msg_err(msg.channel_id.say(ctx, "Not in a voice channel").await);
-    }
+    exit_channel(ctx, msg, guild_id, manager).await;
 
     Ok(())
 }
@@ -305,15 +279,7 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     let guild = msg.guild(&ctx.cache).await.unwrap();
     let guild_id = guild.id;
 
-    let mapping = {
-        let data_read = ctx.data.read().await;
-        let mapping_lock = data_read
-            .get::<SoundboardMap>()
-            .expect("Expected Soundboard mapping in TypeMap.")
-            .clone();
-        let mapping = mapping_lock.read().await;
-        mapping.clone()
-    };
+    let mapping = get_soundboard_mapping(ctx).await;
 
     if args.is_empty() {
         let response = mapping
@@ -353,30 +319,8 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         return Ok(());
     }
 
-    let voice_channels: HashMap<String, ChannelId> = guild
-        .channels
-        .values()
-        .into_iter()
-        .filter_map(|channel| match channel.kind {
-            ChannelType::Voice => Some(((&channel).name.to_lowercase(), channel.id)),
-            _ => None,
-        })
-        .collect();
-
-    if !voice_channels.contains_key(&voice_channel) {
-        log_msg_err(
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    format!("{channel} doesn't exist!", channel = voice_channel),
-                )
-                .await,
-        );
-        return Ok(());
-    }
-
     let tts_file = generate_tts_file(tts_text.as_str()).unwrap();
-    let combined_file = combine_files(&mapping[&*clip_name],&tts_file).unwrap();
+    let combined_file = combine_files(&mapping[&*clip_name], &tts_file).unwrap();
 
     let source = match songbird::ffmpeg(combined_file.to_str().unwrap()).await {
         Ok(source) => source,
@@ -388,24 +332,33 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         }
     };
 
+    let channel_id = check_voice_channels(&guild, &voice_channel).await;
+    if channel_id.is_none() {
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("{channel} doesn't exist!", channel = voice_channel),
+                )
+                .await,
+        );
+        return Ok(());
+    }
+
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();
 
-    let _ = manager
-        .join(guild_id, u64::from(voice_channels[&voice_channel]))
-        .await;
+    let _ = manager.join(guild_id, channel_id.unwrap()).await;
 
     if let Some(handler_lock) = manager.get(guild_id) {
         let mut handler = handler_lock.lock().await;
-
-
         let handle = handler.play_only_source(source);
 
         // Delay until end of the clip + 500ms (for remaining audio packets or something)
         while handle.get_info().await?.playing != PlayMode::End {}
-        thread::sleep(time::Duration::from_millis(500));
+        thread::sleep(Duration::from_millis(500));
     } else {
         log_msg_err(
             msg.channel_id
@@ -414,18 +367,7 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         );
     }
 
-    let has_handler = manager.get(guild_id).is_some();
-    if has_handler {
-        if let Err(e) = manager.remove(guild_id).await {
-            log_msg_err(
-                msg.channel_id
-                    .say(&ctx.http, format!("Failed: {:?}", e))
-                    .await,
-            );
-        }
-    } else {
-        log_msg_err(msg.channel_id.say(ctx, "Not in a voice channel").await);
-    }
+    exit_channel(ctx, msg, guild_id, manager).await;
 
     fs::remove_file(tts_file).ok();
     fs::remove_file(combined_file).ok();
@@ -438,9 +380,50 @@ async fn speak(_: &Context, _: &Message, _args: Args) -> CommandResult {
     Ok(())
 }
 
-
 #[group]
 #[prefix = "audio"]
 #[description = "Commands to audio"]
 #[commands(join, leave, play, clip, speak)]
 struct Audio;
+
+async fn exit_channel(ctx: &Context, msg: &Message, guild_id: GuildId, manager: Arc<Songbird>) {
+    if manager.get(guild_id).is_some() {
+        loop {
+            if let Err(e) = timeout(Duration::from_secs(1), manager.remove(guild_id)).await {
+                log_msg_err(
+                    msg.channel_id
+                        .say(&ctx.http, format!("Failed: {:?}", e))
+                        .await,
+                );
+            } else {
+                break;
+            }
+        }
+    } else {
+        log_msg_err(msg.channel_id.say(ctx, "Not in a voice channel").await);
+    }
+}
+
+async fn check_voice_channels(guild: &Guild, voice_channel: &String) -> Option<ChannelId> {
+    let voice_channels: HashMap<String, ChannelId> = guild
+        .channels
+        .values()
+        .into_iter()
+        .filter_map(|channel| match channel.kind {
+            ChannelType::Voice => Some(((&channel).name.to_lowercase(), channel.id)),
+            _ => None,
+        })
+        .collect();
+
+    voice_channels.get(voice_channel).map(|value| value.clone())
+}
+
+async fn get_soundboard_mapping(ctx: &Context) -> HashMap<String, PathBuf> {
+    let data_read = ctx.data.read().await;
+    let mapping_lock = data_read
+        .get::<SoundboardMap>()
+        .expect("Expected Soundboard mapping in TypeMap.")
+        .clone();
+    let mapping = mapping_lock.read().await;
+    mapping.clone()
+}

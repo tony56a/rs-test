@@ -1,17 +1,12 @@
 use crate::constants::AWS_RESOURCE_REGION;
-use crate::models::fight_weapon::FightWeapon;
 use crate::models::user_quote::UserQuote;
 use async_trait::async_trait;
-use dynomite::dynamodb::{QueryError, QueryInput, QueryOutput, DeleteItemError, DeleteItemOutput};
 use dynomite::retry::{Policy, RetryingDynamoDb};
 use dynomite::{
-    dynamodb::{
-        DeleteItemInput, DynamoDb, DynamoDbClient, GetItemInput, PutItemError, PutItemInput,
-    },
+    dynamodb::{DeleteItemInput, DynamoDb, DynamoDbClient, PutItemInput, QueryInput},
     Attribute, AttributeValue, FromAttributes, Retries,
 };
 use rand::prelude::SliceRandom;
-use rusoto_core::RusotoError;
 use serenity::model::id::{ChannelId, MessageId, UserId};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -239,7 +234,6 @@ impl UserQuoteRepository for UserQuoteDDBRepository {
         let mut delete_key_mapping: HashMap<String, AttributeValue> = HashMap::new();
         delete_key_mapping.insert("server_name".into(), server_name.to_string().into_attr());
         delete_key_mapping.insert("sort_id".into(), query_result.sort_id_key().into_attr());
-
 
         let delete_query = self
             .client

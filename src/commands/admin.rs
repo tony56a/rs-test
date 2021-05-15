@@ -9,7 +9,7 @@ use serenity::framework::standard::{
     macros::{command, group},
     Args, CommandResult,
 };
-use serenity::model::channel::{Message, MessageReference};
+use serenity::model::channel::Message;
 
 #[command]
 #[sub_commands(add_weapon)]
@@ -137,7 +137,8 @@ async fn delete_quote(ctx: &Context, msg: &Message) -> CommandResult {
             .expect("Expected Fight weapon repository in TypeMap.")
             .clone();
 
-        repository.delete_quote(quoted_messaage.id, quoted_messaage.channel_id, &server_name)
+        repository
+            .delete_quote(quoted_messaage.id, quoted_messaage.channel_id, &server_name)
             .await;
 
         log_msg_err(msg.reply(&ctx.http, "deleted.").await);
