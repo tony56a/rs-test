@@ -258,7 +258,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         let handle = handler.play_only_source(source);
 
         // Delay until end of the clip + 500ms (for remaining audio packets or something)
-        while handle.get_info().await?.playing != PlayMode::End {}
+        while handle.get_info().await?.playing == PlayMode::Play {}
         thread::sleep(time::Duration::from_millis(500));
     } else {
         log_msg_err(
@@ -357,7 +357,7 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         let handle = handler.play_only_source(source);
 
         // Delay until end of the clip + 500ms (for remaining audio packets or something)
-        while handle.get_info().await?.playing != PlayMode::End {}
+        while handle.get_info().await?.playing == PlayMode::Play {}
         thread::sleep(Duration::from_millis(500));
     } else {
         log_msg_err(
