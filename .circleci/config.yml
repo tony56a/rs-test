@@ -11,7 +11,7 @@ jobs:
           command: sudo curl https://cli-assets.heroku.com/install.sh | sh
       - run:
           name: Build image
-          command: docker build --build-arg CI_SHA1=$CIRCLE_SHA1 t rs-test/web .
+          command: docker build --build-arg CI_SHA1=$CIRCLE_SHA1 -t rs-test/web .
       - run:
           name: Deploy image to Heroku
           command: |
