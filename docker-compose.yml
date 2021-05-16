@@ -1,7 +1,10 @@
 version: "3.9"
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        - CI_SHA1=${CIRCLE_SHA1}
     ports:
       - "3030:3030"
     depends_on:

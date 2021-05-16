@@ -5,12 +5,14 @@ WORKDIR /usr/src/app
 
 COPY . .
 
+ARG CI_SHA1
+
 RUN apt-get update && apt-get install --no-install-recommends \
  libopus-dev \
  -y
 
-
-RUN cargo build --release
+RUN echo $CI_SHA1
+RUN CIRCLE_SHA1=$CI_SHA1 cargo build --release
 
 # deployment image
 
