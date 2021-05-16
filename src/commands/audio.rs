@@ -9,7 +9,6 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
 use songbird::tracks::PlayMode;
-use songbird::Songbird;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -222,16 +221,6 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         return Ok(());
     }
 
-    let source = match songbird::ffmpeg(mapping[&*clip_name].to_str().unwrap()).await {
-        Ok(source) => source,
-        Err(why) => {
-            println!("Err starting source: {:?}", why);
-            log_msg_err(msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await);
-
-            return Ok(());
-        }
-    };
-
     let channel_id = check_voice_channels(&guild, &voice_channel).await;
     if channel_id.is_none() {
         log_msg_err(
@@ -245,30 +234,14 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         return Ok(());
     }
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialisation.")
-        .clone();
-
-    let _ = manager.join(guild_id, channel_id.unwrap()).await;
-
-    if let Some(handler_lock) = manager.get(guild_id) {
-        let mut handler = handler_lock.lock().await;
-
-        let handle = handler.play_only_source(source);
-
-        // Delay until end of the clip + 500ms (for remaining audio packets or something)
-        while handle.get_info().await?.playing == PlayMode::Play {}
-        thread::sleep(time::Duration::from_millis(500));
-    } else {
-        log_msg_err(
-            msg.channel_id
-                .say(&ctx.http, "Not in a voice channel to play in")
-                .await,
-        );
-    }
-
-    exit_channel(ctx, msg, guild_id, manager).await;
+    play_clip_in_guild(
+        ctx,
+        msg,
+        guild_id,
+        &mapping[&*clip_name],
+        &channel_id.unwrap(),
+    )
+    .await;
 
     Ok(())
 }
@@ -322,16 +295,6 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     let tts_file = generate_tts_file(tts_text.as_str()).unwrap();
     let combined_file = combine_files(&mapping[&*clip_name], &tts_file).unwrap();
 
-    let source = match songbird::ffmpeg(combined_file.to_str().unwrap()).await {
-        Ok(source) => source,
-        Err(why) => {
-            println!("Err starting source: {:?}", why);
-            log_msg_err(msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await);
-
-            return Ok(());
-        }
-    };
-
     let channel_id = check_voice_channels(&guild, &voice_channel).await;
     if channel_id.is_none() {
         log_msg_err(
@@ -345,29 +308,7 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         return Ok(());
     }
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialisation.")
-        .clone();
-
-    let _ = manager.join(guild_id, channel_id.unwrap()).await;
-
-    if let Some(handler_lock) = manager.get(guild_id) {
-        let mut handler = handler_lock.lock().await;
-        let handle = handler.play_only_source(source);
-
-        // Delay until end of the clip + 500ms (for remaining audio packets or something)
-        while handle.get_info().await?.playing == PlayMode::Play {}
-        thread::sleep(Duration::from_millis(500));
-    } else {
-        log_msg_err(
-            msg.channel_id
-                .say(&ctx.http, "Not in a voice channel to play in")
-                .await,
-        );
-    }
-
-    exit_channel(ctx, msg, guild_id, manager).await;
+    play_clip_in_guild(ctx, msg, guild_id, &combined_file, &channel_id.unwrap()).await;
 
     fs::remove_file(tts_file).ok();
     fs::remove_file(combined_file).ok();
@@ -386,7 +327,46 @@ async fn speak(_: &Context, _: &Message, _args: Args) -> CommandResult {
 #[commands(join, leave, play, clip, speak)]
 struct Audio;
 
-async fn exit_channel(ctx: &Context, msg: &Message, guild_id: GuildId, manager: Arc<Songbird>) {
+async fn play_clip_in_guild(
+    ctx: &Context,
+    msg: &Message,
+    guild_id: GuildId,
+    source_path: &PathBuf,
+    channel_id: &ChannelId,
+) {
+    let source = match songbird::ffmpeg(source_path.to_str().unwrap()).await {
+        Ok(source) => source,
+        Err(why) => {
+            println!("Err starting source: {:?}", why);
+            log_msg_err(msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await);
+            return;
+        }
+    };
+
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialisation.")
+        .clone();
+
+    let _ = manager.join(guild_id, channel_id.as_u64().clone()).await;
+
+    if let Some(handler_lock) = manager.get(guild_id) {
+        let mut handler = handler_lock.lock().await;
+
+        let handle = handler.play_only_source(source);
+
+        // Delay until end of the clip + 500ms (for remaining audio packets or something)
+        while handle.get_info().await.unwrap().playing == PlayMode::Play {}
+        thread::sleep(time::Duration::from_millis(500));
+    } else {
+        log_msg_err(
+            msg.channel_id
+                .say(&ctx.http, "Not in a voice channel to play in")
+                .await,
+        );
+        return;
+    }
+
     if manager.get(guild_id).is_some() {
         loop {
             if let Err(e) = timeout(Duration::from_secs(1), manager.remove(guild_id)).await {
@@ -401,6 +381,7 @@ async fn exit_channel(ctx: &Context, msg: &Message, guild_id: GuildId, manager: 
         }
     } else {
         log_msg_err(msg.channel_id.say(ctx, "Not in a voice channel").await);
+        return;
     }
 }
 
