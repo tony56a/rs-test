@@ -10,13 +10,10 @@ jobs:
           name: Install Heroku CLI
           command: sudo curl https://cli-assets.heroku.com/install.sh | sh
       - run:
-          name: Build image
-          command: docker build --build-arg CI_SHA1=$CIRCLE_SHA1 -t rs-test/web .
-      - run:
           name: Deploy image to Heroku
           command: |
             HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:login
-            HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:push -a ${HEROKU_APP} web
+            HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:push --arg CI_SHA1=$CIRCLE_SHA1 -a ${HEROKU_APP} web
             HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:release -a ${HEROKU_APP} web
 
 workflows:
