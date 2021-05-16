@@ -90,10 +90,15 @@ async fn main() {
     // TODO: replace with real config library?
     let mut bot_config: HashMap<String, String> = HashMap::default();
     let deepai_token = env::var("DEEPAI_TOKEN").expect("deepai token");
+    let current_revision = option_env!("CIRCLE_SHA1").unwrap_or(constants::DEVELOPMENT_BUILD).to_string();
 
     bot_config.insert(
         constants::DEEPAI_TOKEN_KEY.to_string(),
-        deepai_token.to_string(),
+        deepai_token,
+    );
+    bot_config.insert(
+        constants::BUILD_HASH_KEY.to_string(),
+        current_revision,
     );
 
     let mapping = utils::audio::load_files();

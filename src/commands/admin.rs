@@ -1,5 +1,5 @@
 use crate::models::fight_weapon::FightWeapon;
-use crate::models::holders::{FightWeaponRepoHolder, UserQuoteRepoHolder};
+use crate::models::holders::{FightWeaponRepoHolder, UserQuoteRepoHolder, BotConfig};
 use crate::models::user_quote::UserQuote;
 use crate::repos::fight_weapon::FightWeaponRepository;
 use crate::repos::quotes::UserQuoteRepository;
@@ -10,6 +10,8 @@ use serenity::framework::standard::{
     Args, CommandResult,
 };
 use serenity::model::channel::Message;
+use crate::constants;
+use serenity::utils::{MessageBuilder, EmbedMessageBuilding};
 
 #[command]
 #[sub_commands(add_weapon)]
@@ -146,8 +148,34 @@ async fn delete_quote(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+#[command]
+async fn revision(ctx: &Context, msg: &Message) -> CommandResult {
+
+    let revision = {
+        let data_read = ctx.data.read().await;
+        let bot_config_lock = data_read
+            .get::<BotConfig>()
+            .expect("Expected BotConfig in TypeMap.")
+            .clone();
+        let bot_config = bot_config_lock.read().await;
+        let ret_val = bot_config.get::<str>(&constants::BUILD_HASH_KEY).unwrap().clone();
+        ret_val
+    };
+
+    let response = match revision.as_str() {
+        constants::DEVELOPMENT_BUILD => {
+            MessageBuilder::new().push("Development Build").build()
+        },
+        _ => {
+            MessageBuilder::new().push(format!("Revision: {}{}", constants::GIT_REPO_LINK_TEMPLATE, revision)).build()
+        }
+    };
+    log_msg_err(msg.channel_id.say(&ctx.http, response).await);
+    Ok(())
+}
+
 #[group]
 #[prefix = "admin"]
 #[checks(Admin)]
-#[commands(weapons, quote)]
+#[commands(weapons, quote, revision)]
 struct Admin;
