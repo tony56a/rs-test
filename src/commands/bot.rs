@@ -1,3 +1,4 @@
+use crate::commands::bot_cmds::rename::rename_user;
 use crate::commands::bot_cmds::text::echo_text;
 use crate::models::mpc::{MemeApiResponse, MemeMessage};
 use crate::utils::chat::log_msg_err;
@@ -11,7 +12,6 @@ use serenity::framework::standard::{
 };
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use std::collections::HashMap;
 
 #[command]
 pub async fn send(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
@@ -132,17 +132,18 @@ pub async fn receive(ctx: &Context, msg: &Message) -> CommandResult {
         Some(message) => message,
     };
 
-    let mut bot_commands = HashMap::new();
-    bot_commands.insert("text", Box::new(echo_text));
+    let command_response = match message.command.to_lowercase().as_str() {
+        "text" => echo_text(&message, ctx).await,
+        "rename" => rename_user(&message, ctx).await,
+        _ => {
+            log_msg_err(
+                msg.reply(&ctx.http, "dunno what to do with the message")
+                    .await,
+            );
+            None
+        }
+    };
 
-    if !bot_commands.contains_key(message.command.to_lowercase().as_str()) {
-        log_msg_err(
-            msg.reply(&ctx.http, "dunno what to do with the message")
-                .await,
-        );
-    }
-    let command_response: Option<String> =
-        bot_commands[message.command.to_lowercase().as_str()](&message, &ctx).await;
     if !command_response.is_none() {
         log_msg_err(
             msg.channel_id

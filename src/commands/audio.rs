@@ -11,7 +11,6 @@ use serenity::utils::MessageBuilder;
 use songbird::tracks::PlayMode;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::{fs, thread, time};
 use tokio::time::{timeout, Duration};
 
