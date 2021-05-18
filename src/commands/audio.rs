@@ -316,7 +316,38 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 
 #[command]
 #[sub_commands(speak_clip)]
-async fn speak(_: &Context, _: &Message, _args: Args) -> CommandResult {
+async fn speak(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild_id = guild.id;
+
+    if args.is_empty() {
+        let response = MessageBuilder::new()
+            .push_line("Use me with \"some text\" \"the channel\"!").build();
+        log_msg_err(msg.channel_id.say(&ctx.http, response).await);
+        return Ok(());
+    }
+
+    let tts_text = args.single_quoted::<String>().unwrap();
+    let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
+
+    let tts_file = generate_tts_file(tts_text.as_str()).unwrap();
+
+    let channel_id = check_voice_channels(&guild, &voice_channel).await;
+    if channel_id.is_none() {
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("{channel} doesn't exist!", channel = voice_channel),
+                )
+                .await,
+        );
+        return Ok(());
+    }
+
+    play_clip_in_guild(ctx, msg, guild_id, &tts_file, &channel_id.unwrap()).await;
+
+    fs::remove_file(tts_file).ok();
     Ok(())
 }
 
