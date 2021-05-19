@@ -8,7 +8,6 @@ use serenity::framework::standard::{
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
-use songbird::tracks::PlayMode;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{fs, thread, time};
@@ -176,6 +175,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 }
 
 #[command]
+#[bucket = "audio"]
 #[only_in(guilds)]
 async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let guild = msg.guild(&ctx.cache).await.unwrap();
@@ -246,6 +246,7 @@ async fn clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 }
 
 #[command("clip")]
+#[bucket = "audio"]
 #[only_in(guilds)]
 async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let guild = msg.guild(&ctx.cache).await.unwrap();
@@ -315,6 +316,7 @@ async fn speak_clip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 }
 
 #[command]
+#[bucket = "audio"]
 #[sub_commands(speak_clip)]
 async fn speak(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let guild = msg.guild(&ctx.cache).await.unwrap();
@@ -382,12 +384,12 @@ async fn play_clip_in_guild(
 
     if let Some(handler_lock) = manager.get(guild_id) {
         let mut handler = handler_lock.lock().await;
-
+        let duration = (&source.metadata.duration).unwrap() + time::Duration::from_millis(500);
         let handle = handler.play_only_source(source);
 
         // Delay until end of the clip + 500ms (for remaining audio packets or something)
-        while handle.get_info().await.unwrap().playing == PlayMode::Play {}
-        thread::sleep(time::Duration::from_millis(500));
+        let _ = handle.get_info().await;
+        thread::sleep(duration);
     } else {
         log_msg_err(
             msg.channel_id

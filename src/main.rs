@@ -72,6 +72,8 @@ async fn main() {
         }) // set the bot's prefix to "?"
         .bucket("spam", |b| b.limit(1).time_span(2))
         .await
+        .bucket("audio", |b| b.limit(1).time_span(2))
+        .await
         .group(&GENERAL_GROUP)
         .group(&SPAM_GROUP)
         .group(&FIGHT_GROUP)
