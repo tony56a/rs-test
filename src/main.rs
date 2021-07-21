@@ -50,7 +50,7 @@ impl EventHandler for Handler {
             let response = MessageBuilder::new()
                 .push("Hi, ")
                 .push(imregex.replace(msg.content.as_str(), "").trim())
-                .push(", I'm")
+                .push(", I'm ")
                 .mention(&current_user.id)
                 .build();
 
