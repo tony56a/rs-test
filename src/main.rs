@@ -36,6 +36,7 @@ use serenity::model::channel::Message;
 use crate::commands::general;
 use serenity::utils::MessageBuilder;
 use crate::utils::chat::log_msg_err;
+use regex::Regex;
 
 struct Handler;
 
@@ -43,18 +44,12 @@ struct Handler;
 impl EventHandler for Handler {
 
     async fn message(&self, ctx: Context, msg: Message) {
-        println!("{}", msg.content.to_lowercase().starts_with(("i'm")));
         if msg.content.to_lowercase().starts_with("i'm") {
             let current_user = ctx.http.get_current_application_info().await.unwrap();
-
+            let imregex = Regex::new("(?i)I'm").expect("invalid regex");
             let response = MessageBuilder::new()
                 .push("Hi, ")
-                .push(msg.content
-                    .replace("i'm", "")
-                    .replace("I'M", "")
-                    .replace("i'M", "")
-                    .replace("I'm", "")
-                    .trim())
+                .push(imregex.replace(msg.content.as_str(), "").trim())
                 .push(", I'm")
                 .mention(&current_user.id)
                 .build();
