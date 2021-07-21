@@ -8,12 +8,12 @@ mod utils;
 use std::env;
 
 use serenity::async_trait;
-use serenity::client::{Client, EventHandler};
+use serenity::client::{Client, EventHandler, Context};
 use serenity::framework::standard::StandardFramework;
 
 use commands::{
     admin::ADMIN_GROUP, audio::AUDIO_GROUP, bot::BOT_GROUP, fight::FIGHT_GROUP,
-    general::GENERAL_GROUP, imagine::IMAGINE_GROUP, spam::SPAM_GROUP,
+    general::GENERAL_GROUP, imagine::IMAGINE_GROUP, spam::SPAM_GROUP
 };
 use endpoints::filters;
 use songbird::SerenityInit;
@@ -32,11 +32,37 @@ use dynomite::retry::Policy;
 use dynomite::{dynamodb::DynamoDbClient, Retries};
 use serenity::http::Http;
 use tokio::sync::RwLock;
+use serenity::model::channel::Message;
+use crate::commands::general;
+use serenity::utils::MessageBuilder;
+use crate::utils::chat::log_msg_err;
 
 struct Handler;
 
 #[async_trait]
-impl EventHandler for Handler {}
+impl EventHandler for Handler {
+
+    async fn message(&self, ctx: Context, msg: Message) {
+        println!("{}", msg.content.to_lowercase().starts_with(("i'm")));
+        if msg.content.to_lowercase().starts_with("i'm") {
+            let current_user = ctx.http.get_current_application_info().await.unwrap();
+
+            let response = MessageBuilder::new()
+                .push("Hi, ")
+                .push(msg.content
+                    .replace("i'm", "")
+                    .replace("I'M", "")
+                    .replace("i'M", "")
+                    .replace("I'm", "")
+                    .trim())
+                .push(", I'm")
+                .mention(&current_user.id)
+                .build();
+
+            log_msg_err(msg.channel_id.say(&ctx.http, response).await);
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() {
