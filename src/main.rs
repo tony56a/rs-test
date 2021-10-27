@@ -46,7 +46,7 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content.to_lowercase().starts_with("i'm") {
             let current_user = ctx.http.get_current_application_info().await.unwrap();
-            let imregex = Regex::new("(?i)I'm").expect("invalid regex");
+            let imregex = Regex::new("(?i)I'm\\s+").expect("invalid regex");
             let response = MessageBuilder::new()
                 .push("Hi, ")
                 .push(imregex.replace(msg.content.as_str(), "").trim())
