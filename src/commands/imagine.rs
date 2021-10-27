@@ -9,10 +9,15 @@ use serenity::framework::standard::{
 };
 use serenity::model::prelude::*;
 use serenity::prelude::*;
+use reqwest::Response;
 
 #[derive(Deserialize)]
-struct ApiResponse {
+struct ImageApiResponse {
     output_url: String,
+}
+
+#[derive(Deserialize)]
+struct TextApiResponse {
     output: String,
 }
 
@@ -29,7 +34,8 @@ pub async fn picture(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         );
         return Ok(());
     }
-    let res = invoke_deepai(ctx, msg, args, "https://api.deepai.org/api/text2img").await;
+    let response = invoke_deepai(ctx, msg, args, "https://api.deepai.org/api/text2img").await;
+    let res = response.json::<ImageApiResponse>().await?;
     log_msg_err(msg.channel_id.say(&ctx.http, res.output_url).await);
     Ok(())
 }
@@ -47,7 +53,8 @@ pub async fn story(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         );
         return Ok(());
     }
-    let res = invoke_deepai(ctx, msg, args, "https://api.deepai.org/api/text-generator").await;
+    let response = invoke_deepai(ctx, msg, args, "https://api.deepai.org/api/text-generator").await;
+    let res = response.json::<TextApiResponse>().await?;
     log_msg_err(msg.channel_id.say(&ctx.http, res.output).await);
     Ok(())
 }
@@ -74,7 +81,7 @@ pub async fn weird_shit(ctx: &Context, msg: &Message) -> CommandResult {
             .form(&params)
             .send()
             .await?
-            .json::<ApiResponse>()
+            .json::<ImageApiResponse>()
             .await?
     };
 
@@ -82,7 +89,7 @@ pub async fn weird_shit(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
-async fn invoke_deepai(ctx: &Context, msg: &Message, mut args: Args, url: &str) -> ApiResponse {
+async fn invoke_deepai(ctx: &Context, msg: &Message, mut args: Args, url: &str) -> Response {
 
     let sentence = String::from(args.single_quoted::<String>().unwrap().trim());
     let params = [("text", sentence)];
@@ -105,10 +112,8 @@ async fn invoke_deepai(ctx: &Context, msg: &Message, mut args: Args, url: &str) 
             .send()
             .await
             .unwrap()
-            .json::<ApiResponse>()
-            .await
     };
-    res.unwrap()
+    res
 }
 
 #[group]
