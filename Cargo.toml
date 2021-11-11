@@ -23,6 +23,10 @@ features = [
     "cache",
 ]
 
+[dependencies.rusqlite]
+version = "0.26.0"
+features = ["bundled"]
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"

@@ -8,41 +8,40 @@ mod utils;
 use std::env;
 
 use serenity::async_trait;
-use serenity::client::{Client, EventHandler, Context};
+use serenity::client::{Client, Context, EventHandler};
 use serenity::framework::standard::StandardFramework;
 
 use commands::{
     admin::ADMIN_GROUP, audio::AUDIO_GROUP, bot::BOT_GROUP, fight::FIGHT_GROUP,
-    general::GENERAL_GROUP, imagine::IMAGINE_GROUP, spam::SPAM_GROUP
+    general::GENERAL_GROUP, imagine::IMAGINE_GROUP, spam::SPAM_GROUP,
 };
 use endpoints::filters;
 use songbird::SerenityInit;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use crate::commands::general;
 use crate::constants::AWS_RESOURCE_REGION;
 use crate::models::holders::{
-    BotConfig, FightUserRepoHolder, FightWeaponRepoHolder, Owners, SoundboardMap,
-    UserQuoteRepoHolder,
+    BotConfig, FightUserRepoHolder, FightWeaponRepoHolder, Owners,
+    SoundboardMap, UserQuoteRepoHolder,
 };
 use crate::repos::fight_user::FightUserDDBRepository;
 use crate::repos::fight_weapon::FightWeaponDDBRepository;
 use crate::repos::quotes::UserQuoteDDBRepository;
+use crate::utils::chat::log_msg_err;
 use dynomite::retry::Policy;
 use dynomite::{dynamodb::DynamoDbClient, Retries};
-use serenity::http::Http;
-use tokio::sync::RwLock;
-use serenity::model::channel::Message;
-use crate::commands::general;
-use serenity::utils::MessageBuilder;
-use crate::utils::chat::log_msg_err;
 use regex::Regex;
+use serenity::http::Http;
+use serenity::model::channel::Message;
+use serenity::utils::MessageBuilder;
+use tokio::sync::RwLock;
 
 struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content.to_lowercase().starts_with("i'm") {
             let current_user = ctx.http.get_current_application_info().await.unwrap();
