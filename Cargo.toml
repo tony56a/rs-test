@@ -36,8 +36,8 @@ serde_json = "1.0.64"
 songbird = "0.1.6"
 rand = "0.8.3"
 reqwest = { version = "0.11", features = ["json"] }
-rusoto_core = "0.46.0"
-rusoto_dynamodb = "0.46.0"
+rusoto_core = "0.47.0"
+rusoto_dynamodb = "0.47.0"
 dynomite = { git = "https://github.com//softprops/dynomite", branch = "master" }
 async-trait = "0.1.50"
 image = { version = "0.23.14", features = ["gif", "jpeg", "png", "webp"]  }
