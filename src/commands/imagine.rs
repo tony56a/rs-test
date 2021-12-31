@@ -1,7 +1,10 @@
 use crate::constants;
 use crate::models::holders::BotConfig;
 use crate::utils::chat::log_msg_err;
+use base64::decode;
+use image::{load_from_memory, ImageOutputFormat};
 use reqwest;
+use reqwest::Response;
 use serde::Deserialize;
 use serenity::framework::standard::{
     macros::{command, group},
@@ -9,7 +12,7 @@ use serenity::framework::standard::{
 };
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use reqwest::Response;
+use std::collections::HashMap;
 
 #[derive(Deserialize)]
 struct ImageApiResponse {
@@ -19,6 +22,11 @@ struct ImageApiResponse {
 #[derive(Deserialize)]
 struct TextApiResponse {
     output: String,
+}
+
+#[derive(Deserialize)]
+struct Text2ImApiResponse {
+    data: Vec<String>,
 }
 
 #[command]
@@ -37,6 +45,66 @@ pub async fn picture(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     let response = invoke_deepai(ctx, msg, args, "https://api.deepai.org/api/text2img").await;
     let res = response.json::<ImageApiResponse>().await?;
     log_msg_err(msg.channel_id.say(&ctx.http, res.output_url).await);
+    Ok(())
+}
+
+// This differs from picture, in that it's using a real model (https://hf.space/gradioiframe/valhalla/glide-text2im/api)
+#[command]
+pub async fn image(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.is_empty() {
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    String::from("Use me with \"a sentence, any sentence\""),
+                )
+                .await,
+        );
+        return Ok(());
+    }
+
+    let initial_message = match msg
+        .channel_id
+        .say(&ctx.http, "Beep boop, thinking...")
+        .await
+    {
+        Ok(message) => message,
+        Err(e) => {
+            // Failure path, just return
+            println!("Error when publishing message: {:?}", e);
+            return Ok(());
+        }
+    };
+
+    let client = reqwest::Client::new();
+    let sentence = String::from(args.single_quoted::<String>().unwrap().trim());
+    let mut map = HashMap::new();
+    map.insert("data", [sentence]);
+
+    let response = client
+        .post("https://hf.space/gradioiframe/valhalla/glide-text2im/api/predict")
+        .json(&map)
+        .send()
+        .await?
+        .json::<Text2ImApiResponse>()
+        .await?;
+
+    let image_content_base64 = response.data[0].replacen("data:image/png;base64,", "", 1);
+    let image_buf = decode(image_content_base64).unwrap();
+    let image = load_from_memory(image_buf.as_slice()).unwrap();
+    let mut buf = Vec::new();
+    image.write_to(&mut buf, ImageOutputFormat::Png);
+
+    msg.channel_id
+        .delete_message(&ctx.http, initial_message.id)
+        .await?;
+    log_msg_err(
+        msg.channel_id
+            .send_files(&ctx.http, vec![(buf.as_slice(), "message.png")], |m| {
+                m.content("")
+            })
+            .await,
+    );
     Ok(())
 }
 
@@ -90,11 +158,10 @@ pub async fn weird_shit(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 async fn invoke_deepai(ctx: &Context, msg: &Message, mut args: Args, url: &str) -> Response {
-
     let sentence = String::from(args.single_quoted::<String>().unwrap().trim());
     let params = [("text", sentence)];
 
-    let res = {
+    {
         let data_read = ctx.data.read().await;
         let bot_config_lock = data_read
             .get::<BotConfig>()
@@ -112,12 +179,11 @@ async fn invoke_deepai(ctx: &Context, msg: &Message, mut args: Args, url: &str) 
             .send()
             .await
             .unwrap()
-    };
-    res
+    }
 }
 
 #[group]
 #[prefix = "imagine"]
 #[description = "Commands to synthesize things via ML"]
-#[commands(picture, weird_shit, story)]
+#[commands(picture, weird_shit, story, image)]
 struct Imagine;
