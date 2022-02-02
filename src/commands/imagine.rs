@@ -78,7 +78,9 @@ pub async fn image(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
     let client = reqwest::Client::new();
     let sentence = String::from(args.single_quoted::<String>().unwrap().trim());
-    let map = HashMap::from([("data", [&sentence])]);
+    let mut map = HashMap::new();
+    map.insert("data", [sentence]);
+
     let response = client
         .post("https://hf.space/gradioiframe/valhalla/glide-text2im/+/api/predict/")
         .json(&map)
