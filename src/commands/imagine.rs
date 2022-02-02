@@ -78,11 +78,9 @@ pub async fn image(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
     let client = reqwest::Client::new();
     let sentence = String::from(args.single_quoted::<String>().unwrap().trim());
-    let mut map = HashMap::new();
-    map.insert("data", [sentence]);
-
+    let map = HashMap::from([("data", [&sentence])]);
     let response = client
-        .post("https://hf.space/gradioiframe/valhalla/glide-text2im/api/predict")
+        .post("https://hf.space/gradioiframe/valhalla/glide-text2im/+/api/predict/")
         .json(&map)
         .send()
         .await?
@@ -101,9 +99,9 @@ pub async fn image(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     log_msg_err(
         msg.channel_id
             .send_files(&ctx.http, vec![(buf.as_slice(), "message.png")], |m| {
-                m.content("")
+                m.content(&sentence)
             })
-            .await,
+            .await
     );
     Ok(())
 }
