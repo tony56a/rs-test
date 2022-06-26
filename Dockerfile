@@ -1,5 +1,5 @@
 # Build image
-FROM rust:1.51-buster as build-image
+FROM rust:1.61-buster as build-image
 
 WORKDIR /usr/src/app
 
