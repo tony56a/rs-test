@@ -26,7 +26,7 @@ struct TextApiResponse {
 
 #[derive(Deserialize)]
 struct Text2ImApiResponse {
-    data: Vec<String>,
+    images: Vec<String>,
 }
 
 #[command]
@@ -79,17 +79,21 @@ pub async fn image(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     let client = reqwest::Client::new();
     let sentence = String::from(args.single_quoted::<String>().unwrap().trim());
     let mut map = HashMap::new();
-    map.insert("data", [sentence.clone()]);
+    //map.insert("data", [sentence.clone()]);
+    map.insert("prompt", sentence.clone());
+
+    // let url = "https://hf.space/gradioiframe/valhalla/glide-text2im/+/api/predict/";
+    let url = "https://backend.craiyon.com/generate";
 
     let response = client
-        .post("https://hf.space/gradioiframe/valhalla/glide-text2im/+/api/predict/")
+        .post(url)
         .json(&map)
         .send()
         .await?
         .json::<Text2ImApiResponse>()
         .await?;
 
-    let image_content_base64 = response.data[0].replacen("data:image/png;base64,", "", 1);
+    let image_content_base64 = response.images[0].replace("\n", "");
     let image_buf = decode(image_content_base64).unwrap();
     let image = load_from_memory(image_buf.as_slice()).unwrap();
     let mut buf = Vec::new();
@@ -103,7 +107,7 @@ pub async fn image(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
             .send_files(&ctx.http, vec![(buf.as_slice(), "message.png")], |m| {
                 m.content(&sentence)
             })
-            .await
+            .await,
     );
     Ok(())
 }
