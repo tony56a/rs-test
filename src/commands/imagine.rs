@@ -5,6 +5,7 @@ use base64::decode;
 use image::{load_from_memory, ImageOutputFormat};
 use reqwest;
 use reqwest::Response;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use serde::Deserialize;
 use serenity::framework::standard::{
     macros::{command, group},
@@ -13,6 +14,8 @@ use serenity::framework::standard::{
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use std::collections::HashMap;
+use reqwest_retry::policies::ExponentialBackoff;
+use reqwest_retry::RetryTransientMiddleware;
 
 #[derive(Deserialize)]
 struct ImageApiResponse {
@@ -76,7 +79,11 @@ pub async fn image(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         }
     };
 
-    let client = reqwest::Client::new();
+    let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
+    let client = ClientBuilder::new(reqwest::Client::new())
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build();
+
     let sentence = String::from(args.single_quoted::<String>().unwrap().trim());
     let mut map = HashMap::new();
     //map.insert("data", [sentence.clone()]);
@@ -89,26 +96,35 @@ pub async fn image(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         .post(url)
         .json(&map)
         .send()
-        .await?
-        .json::<Text2ImApiResponse>()
-        .await?;
+        .await;
 
-    let image_content_base64 = response.images[0].replace("\n", "");
-    let image_buf = decode(image_content_base64).unwrap();
-    let image = load_from_memory(image_buf.as_slice()).unwrap();
-    let mut buf = Vec::new();
-    image.write_to(&mut buf, ImageOutputFormat::Png);
+    match response {
+        Ok(responsPayload) => {
+            let images = responsPayload.json::<Text2ImApiResponse>().await?;
+            let image_content_base64 = images.images[0].replace("\n", "");
+            let image_buf = decode(image_content_base64).unwrap();
+            let image = load_from_memory(image_buf.as_slice()).unwrap();
+            let mut buf = Vec::new();
+            image.write_to(&mut buf, ImageOutputFormat::Png);
+            msg.channel_id
+                .delete_message(&ctx.http, initial_message.id)
+                .await?;
+            log_msg_err(
+                msg.channel_id
+                    .send_files(&ctx.http, vec![(buf.as_slice(), "message.png")], |m| {
+                        m.content(&sentence)
+                    })
+                    .await,
+            );
+        }
+        Err(e) => {
+            msg.channel_id
+                .delete_message(&ctx.http, initial_message.id)
+                .await?;
+            println!("Error when Getting image: {:?}", e)
+        }
+    };
 
-    msg.channel_id
-        .delete_message(&ctx.http, initial_message.id)
-        .await?;
-    log_msg_err(
-        msg.channel_id
-            .send_files(&ctx.http, vec![(buf.as_slice(), "message.png")], |m| {
-                m.content(&sentence)
-            })
-            .await,
-    );
     Ok(())
 }
 
