@@ -230,8 +230,22 @@ async fn say(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         return Ok(());
     }
 
-    let tts_text = args.single_quoted::<String>().unwrap();
     let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
+    let channel_id = check_voice_channels(&guild, &voice_channel).await;
+    if channel_id.is_none() {
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("{channel} doesn't exist!", channel = voice_channel),
+                )
+                .await,
+        );
+        return Ok(());
+    }
+
+    let mut tts_text = args.single_quoted::<String>().unwrap();
+    tts_text.truncate(200);
 
     let retrievalRequest = SpeechGenerationRequest {
         text: tts_text,
@@ -255,28 +269,11 @@ async fn say(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let url = format!("https://cdn.15.ai/audio/{}", response_file_name);
     let response_file = reqwest::get(&url).await?;
 
-    let tmp_dir = format!("/tmp/{}", response_file_name);
-
-    println!("file to download: '{}' from {}", &response_file_name, &url);
-    let fname = PathBuf::from(tmp_dir);
-    println!("will be located under: {:?}", fname);
+    let fname = PathBuf::from(format!("/tmp/{}", response_file_name));
 
     let mut tts_file = File::create(&fname)?;
     let content = response_file.bytes().await?;
     copy(&mut content.as_bytes(), &mut tts_file)?;
-
-    let channel_id = check_voice_channels(&guild, &voice_channel).await;
-    if channel_id.is_none() {
-        log_msg_err(
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    format!("{channel} doesn't exist!", channel = voice_channel),
-                )
-                .await,
-        );
-        return Ok(());
-    }
 
     let combined_file = combine_files(&fname, &mapping["sponsor"]).unwrap();
 
