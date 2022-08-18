@@ -46,3 +46,4 @@ image = { version = "0.23.14", features = ["gif", "jpeg", "png", "webp"]  }
 uuid = "0.8"
 regex = "1.5.4"
 base64 = "0.13.0"
+tempfile = "3.3.0"

@@ -1,6 +1,10 @@
 use crate::models::holders::SoundboardMap;
 use crate::utils::audio::{combine_files, generate_tts_file};
 use crate::utils::chat::log_msg_err;
+use image::EncodableLayout;
+use reqwest;
+use reqwest::Response;
+use serde::{Deserialize, Serialize};
 use serenity::framework::standard::{
     macros::{command, group},
     Args, CommandResult,
@@ -9,169 +13,24 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::copy;
 use std::path::PathBuf;
 use std::{fs, thread, time};
+use tempfile::Builder;
 use tokio::time::{timeout, Duration};
+use uuid::Uuid;
 
-#[command]
-#[only_in(guilds)]
-pub async fn join(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).await.unwrap();
-    let guild_id = guild.id;
-
-    if args.is_empty() {
-        log_msg_err(
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    String::from("Use me with \"The channel you want me to join\""),
-                )
-                .await,
-        );
-        return Ok(());
-    }
-
-    let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
-
-    let voice_channels: HashMap<String, ChannelId> = guild
-        .channels
-        .values()
-        .into_iter()
-        .filter_map(|channel| match channel.kind {
-            ChannelType::Voice => Some(((&channel).name.to_lowercase(), channel.id)),
-            _ => None,
-        })
-        .collect();
-
-    if !voice_channels.contains_key(&voice_channel) {
-        log_msg_err(
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    format!("{channel} doesn't exist!", channel = voice_channel),
-                )
-                .await,
-        );
-        return Ok(());
-    }
-    let manager = songbird::get(ctx).await.expect("Songbird client").clone();
-
-    let _ = manager
-        .join(
-            guild_id,
-            u64::from(voice_channels[&voice_channel.to_lowercase()]),
-        )
-        .await;
-
-    Ok(())
+#[derive(Serialize)]
+struct SpeechGenerationRequest {
+    text: String,
+    character: String,
+    emotion: String,
 }
 
-#[command]
-#[only_in(guilds)]
-pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).await.unwrap();
-    let guild_id = guild.id;
-
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialisation.")
-        .clone();
-    let has_handler = manager.get(guild_id).is_some();
-
-    if has_handler {
-        if let Err(e) = manager.remove(guild_id).await {
-            log_msg_err(
-                msg.channel_id
-                    .say(&ctx.http, format!("Failed: {:?}", e))
-                    .await,
-            );
-        }
-    } else {
-        log_msg_err(msg.channel_id.say(ctx, "Not in a voice channel").await);
-    }
-
-    Ok(())
-}
-
-#[command]
-#[only_in(guilds)]
-async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let mapping = {
-        let data_read = ctx.data.read().await;
-        let mapping_lock = data_read
-            .get::<SoundboardMap>()
-            .expect("Expected Soundboard mapping in TypeMap.")
-            .clone();
-        let mapping = mapping_lock.read().await;
-        mapping.clone()
-    };
-    if args.is_empty() {
-        let response = mapping
-            .keys()
-            .cloned()
-            .into_iter()
-            .fold(
-                MessageBuilder::new()
-                    .push("Use me with the \"the clip name\"! Valid Clips are:\n "),
-                |cb, clip_name| cb.push(format!("\t* {}\n", clip_name)),
-            )
-            .build();
-        log_msg_err(msg.channel_id.say(&ctx.http, response).await);
-        return Ok(());
-    }
-
-    let clip_name = match args.single_quoted::<String>() {
-        Ok(name) => name.to_lowercase(),
-        Err(_) => {
-            log_msg_err(
-                msg.channel_id
-                    .say(&ctx.http, "Clip name is not valid!")
-                    .await,
-            );
-            return Ok(());
-        }
-    };
-
-    if !mapping.contains_key(&*clip_name) {
-        log_msg_err(
-            msg.channel_id
-                .say(&ctx.http, String::from("Effects are not available"))
-                .await,
-        );
-        return Ok(());
-    }
-
-    let guild = msg.guild(&ctx.cache).await.unwrap();
-    let guild_id = guild.id;
-
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialisation.")
-        .clone();
-
-    if let Some(handler_lock) = manager.get(guild_id) {
-        let mut handler = handler_lock.lock().await;
-        let source = match songbird::ffmpeg(mapping[&*clip_name].to_str().unwrap()).await {
-            Ok(source) => source,
-            Err(why) => {
-                println!("Err starting source: {:?}", why);
-
-                log_msg_err(msg.channel_id.say(&ctx.http, "Error sourcing ffmpeg").await);
-
-                return Ok(());
-            }
-        };
-
-        handler.play_only_source(source);
-    } else {
-        log_msg_err(
-            msg.channel_id
-                .say(&ctx.http, "Not in a voice channel to play in")
-                .await,
-        );
-    }
-
-    Ok(())
+#[derive(Deserialize)]
+struct SpeechGenerationResponse {
+    wavNames: Vec<String>,
 }
 
 #[command]
@@ -324,7 +183,8 @@ async fn speak(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     if args.is_empty() {
         let response = MessageBuilder::new()
-            .push_line("Use me with \"some text\" \"the channel\"!").build();
+            .push_line("Use me with \"some text\" \"the channel\"!")
+            .build();
         log_msg_err(msg.channel_id.say(&ctx.http, response).await);
         return Ok(());
     }
@@ -353,10 +213,84 @@ async fn speak(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     Ok(())
 }
 
+#[command]
+#[bucket = "audio"]
+#[sub_commands(speak_clip)]
+async fn say(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild_id = guild.id;
+
+    let mapping = get_soundboard_mapping(ctx).await;
+
+    if args.is_empty() {
+        let response = MessageBuilder::new()
+            .push_line("Use me with \"some text\" \"the channel\"!")
+            .build();
+        log_msg_err(msg.channel_id.say(&ctx.http, response).await);
+        return Ok(());
+    }
+
+    let tts_text = args.single_quoted::<String>().unwrap();
+    let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
+
+    let retrievalRequest = SpeechGenerationRequest {
+        text: tts_text,
+        character: "GLaDOS".to_string(),
+        emotion: "Contextual".to_string(),
+    };
+
+    let client = reqwest::Client::new();
+
+    let api_res = client
+        .post("https://api.15.ai/app/getAudioFile5")
+        .json::<SpeechGenerationRequest>(&retrievalRequest)
+        .send()
+        .await
+        .unwrap()
+        .json::<SpeechGenerationResponse>()
+        .await
+        .unwrap();
+
+    let response_file_name = api_res.wavNames[0].clone();
+    let url = format!("https://cdn.15.ai/audio/{}", response_file_name);
+    let response_file = reqwest::get(&url).await?;
+
+    let tmp_dir = format!("/tmp/{}", response_file_name);
+
+    println!("file to download: '{}' from {}", &response_file_name, &url);
+    let fname = PathBuf::from(tmp_dir);
+    println!("will be located under: {:?}", fname);
+
+    let mut tts_file = File::create(&fname)?;
+    let content = response_file.bytes().await?;
+    copy(&mut content.as_bytes(), &mut tts_file)?;
+
+    let channel_id = check_voice_channels(&guild, &voice_channel).await;
+    if channel_id.is_none() {
+        log_msg_err(
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    format!("{channel} doesn't exist!", channel = voice_channel),
+                )
+                .await,
+        );
+        return Ok(());
+    }
+
+    let combined_file = combine_files(&fname, &mapping["sponsor"]).unwrap();
+
+    play_clip_in_guild(ctx, msg, guild_id, &combined_file, &channel_id.unwrap()).await;
+
+    fs::remove_file(&fname).ok();
+    fs::remove_file(combined_file).ok();
+    Ok(())
+}
+
 #[group]
 #[prefix = "audio"]
 #[description = "Commands to audio"]
-#[commands(join, leave, play, clip, speak)]
+#[commands(clip, speak, say)]
 struct Audio;
 
 async fn play_clip_in_guild(
