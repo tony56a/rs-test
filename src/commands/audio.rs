@@ -16,6 +16,7 @@ use std::fs::File;
 use std::io::copy;
 use std::path::PathBuf;
 use std::{fs, thread, time};
+use regex::Regex;
 use tokio::time::{timeout, Duration};
 
 #[derive(Serialize)]
@@ -228,7 +229,10 @@ async fn say(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     }
 
     let mut tts_text = args.single_quoted::<String>().unwrap();
+    let number_regex = Regex::new("[0-9]+").expect("invalid regex");
+    tts_text = number_regex.replace_all(tts_text.as_str(), "").trim().to_string();
     tts_text.truncate(200);
+    println!("tts text {}", tts_text);
 
     let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
     let channel_id = check_voice_channels(&guild, &voice_channel).await;
