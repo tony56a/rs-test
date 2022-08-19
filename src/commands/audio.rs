@@ -230,7 +230,6 @@ async fn say(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         return Ok(());
     }
 
-
     let mut tts_text = args.single_quoted::<String>().unwrap();
     tts_text.truncate(200);
 

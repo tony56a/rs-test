@@ -50,7 +50,7 @@ pub fn generate_tts_file(text: &str) -> Option<PathBuf> {
 }
 
 pub fn combine_files(first_file: &PathBuf, second_file: &PathBuf) -> Option<PathBuf> {
-    let output_file_name = format!("/tmp/{}.mp3", second_file.file_stem()?.to_str()?);
+    let output_file_name = format!("/tmp/{}.mp3", Uuid::new_v4().to_hyphenated().to_string());
 
     let args = [
         "-i",
