@@ -23,8 +23,8 @@ use std::sync::Arc;
 use crate::commands::general;
 use crate::constants::AWS_RESOURCE_REGION;
 use crate::models::holders::{
-    BotConfig, FightUserRepoHolder, FightWeaponRepoHolder, Owners,
-    SoundboardMap, UserQuoteRepoHolder,
+    BotConfig, FightUserRepoHolder, FightWeaponRepoHolder, Owners, SoundboardMap,
+    UserQuoteRepoHolder,
 };
 use crate::repos::fight_user::FightUserDDBRepository;
 use crate::repos::fight_weapon::FightWeaponDDBRepository;

@@ -5,7 +5,7 @@ use base64::decode;
 use image::{load_from_memory, ImageOutputFormat};
 use reqwest;
 use reqwest::Response;
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_middleware::ClientBuilder;
 use serde::Deserialize;
 use serenity::framework::standard::{
     macros::{command, group},

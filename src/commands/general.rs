@@ -9,7 +9,7 @@ use serenity::framework::standard::{
 };
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use serenity::utils::{EmbedMessageBuilding, MessageBuilder};
+use serenity::utils::MessageBuilder;
 
 #[command]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
@@ -70,10 +70,10 @@ async fn secret_menu(ctx: &Context, msg: &Message) -> CommandResult {
         };
 
         let response = MessageBuilder::new()
-            .push(format!("Hey! Let's get some {}({}) from {}",
-                          item.name,
-                          item.link,
-                          item.restaurant))
+            .push(format!(
+                "Hey! Let's get some {}({}) from {}",
+                item.name, item.link, item.restaurant
+            ))
             .build();
 
         log_msg_err(msg.channel_id.say(&ctx.http, response).await);

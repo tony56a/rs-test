@@ -3,7 +3,6 @@ use crate::utils::audio::{combine_files, generate_tts_file};
 use crate::utils::chat::log_msg_err;
 use image::EncodableLayout;
 use reqwest;
-use reqwest::Response;
 use serde::{Deserialize, Serialize};
 use serenity::framework::standard::{
     macros::{command, group},
@@ -17,9 +16,7 @@ use std::fs::File;
 use std::io::copy;
 use std::path::PathBuf;
 use std::{fs, thread, time};
-use tempfile::Builder;
 use tokio::time::{timeout, Duration};
-use uuid::Uuid;
 
 #[derive(Serialize)]
 struct SpeechGenerationRequest {
@@ -255,15 +252,17 @@ async fn say(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let client = reqwest::Client::new();
 
-    let api_res = client
+    let api_res_payload = client
         .post("https://api.15.ai/app/getAudioFile5")
         .json::<SpeechGenerationRequest>(&retrievalRequest)
         .send()
         .await
-        .unwrap()
-        .json::<SpeechGenerationResponse>()
-        .await
         .unwrap();
+
+    let text = api_res_payload.text().await.unwrap();
+
+    println!("15.ai API response {}", text);
+    let api_res: SpeechGenerationResponse = serde_json::from_str(&text)?;
 
     let response_file_name = api_res.wavNames[0].clone();
     let url = format!("https://cdn.15.ai/audio/{}", response_file_name);
