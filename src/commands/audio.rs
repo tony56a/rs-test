@@ -230,6 +230,10 @@ async fn say(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         return Ok(());
     }
 
+
+    let mut tts_text = args.single_quoted::<String>().unwrap();
+    tts_text.truncate(200);
+
     let voice_channel = String::from(args.single_quoted::<String>()?.to_lowercase().trim());
     let channel_id = check_voice_channels(&guild, &voice_channel).await;
     if channel_id.is_none() {
@@ -243,9 +247,6 @@ async fn say(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         );
         return Ok(());
     }
-
-    let mut tts_text = args.single_quoted::<String>().unwrap();
-    tts_text.truncate(200);
 
     let retrievalRequest = SpeechGenerationRequest {
         text: tts_text,
